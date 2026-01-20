@@ -2,7 +2,7 @@
 import axios from 'axios';
 
 const apiClient = axios.create({
-  baseURL: 'http://localhost:8080/api', // Khớp với cổng Backend đang chạy
+  baseURL: 'https://jewelry-shop-backend-production.up.railway.app', // Khớp với cổng Backend đang chạy
   headers: {
     'Content-Type': 'application/json',
   },
