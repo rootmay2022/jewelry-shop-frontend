@@ -2,7 +2,7 @@ import axios from 'axios';
 
 const apiClient = axios.create({
   // Thêm /api vào cuối để khớp với @RequestMapping("/api") trong Controller của Spring Boot
-  baseURL: 'https://jewelry-shop-backend-production.up.railway.app/api', 
+  baseURL: 'https://jewelry-shop-backend-production.up.railway.app/api/', 
   headers: {
     'Content-Type': 'application/json',
   },
