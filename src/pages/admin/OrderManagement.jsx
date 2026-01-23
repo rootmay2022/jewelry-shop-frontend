@@ -63,21 +63,20 @@ const OrderManagement = () => {
             render: (id) => <b>#{id}</b> 
         },
         { 
-            title: 'Khách Hàng', 
-            key: 'customer', 
-            render: (_, record) => (
-                <div>
-                    {/* SỬA LỖI Ở ĐÂY: Ưu tiên lấy fullName từ user object hoặc record */}
-                    <div style={{ fontWeight: 'bold' }}>
-                        {record.user?.fullName || record.fullName || record.customerName || "Khách ẩn danh"}
-                    </div>
-                    {/* Hiện thêm SĐT phía dưới cho ní dễ gọi ship */}
-                    <div style={{ fontSize: '12px', color: '#666' }}>
-                        {record.user?.phone || record.phone}
-                    </div>
-                </div>
-            )
-        },
+    title: 'Khách Hàng', 
+    key: 'customer', 
+    render: (_, record) => (
+        <div>
+            {/* Thử tất cả các trường có thể chứa tên: fullName, name, hoặc user.fullName */}
+            <div style={{ fontWeight: 'bold' }}>
+                {record.fullName || record.user?.fullName || record.name || "Chưa có tên"}
+            </div>
+            <div style={{ fontSize: '12px', color: '#666' }}>
+                {record.phone || record.user?.phone}
+            </div>
+        </div>
+    )
+},
         { 
             title: 'Ngày Đặt', 
             dataIndex: 'createdAt', 

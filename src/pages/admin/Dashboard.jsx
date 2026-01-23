@@ -17,37 +17,38 @@ const Dashboard = () => {
     const [realData, setRealData] = useState({ revenue: 0, orderCount: 0 });
 
     useEffect(() => {
-        const fetchStats = async () => {
-            setLoading(true);
-            try {
-                const response = await getDashboardStats();
-                if (response.success) {
-                    const data = response.data;
-                    
-                    // Lấy danh sách đơn hàng thực tế
-                    const ordersList = data.allOrders || data.orders || [];
+    const fetchStats = async () => {
+        setLoading(true);
+        try {
+            const response = await getDashboardStats();
+            if (response.success) {
+                const data = response.data;
+                
+                // 🔥 SỬA CHỖ NÀY: Backend của ní trả về mảng đơn hàng trong data.orders
+                const ordersList = data.orders || [];
 
-                    // Chỉ lọc các đơn "Đã giao"
-                    const deliveredOrders = ordersList.filter(order => order.status === 'DELIVERED');
+                // Lọc đơn Đã giao (Status trong hình của ní là 'DELIVERED')
+                const deliveredOrders = ordersList.filter(order => order.status === 'DELIVERED');
 
-                    // Cộng dồn doanh thu tự động
-                    const totalRevenue = deliveredOrders.reduce((sum, order) => sum + order.totalAmount, 0);
-                    
-                    setRealData({
-                        revenue: totalRevenue,
-                        orderCount: deliveredOrders.length
-                    });
-                    setStats(data);
-                }
-            } catch (error) {
-                console.error("Lỗi Dashboard:", error);
-                message.error('Lỗi cập nhật số liệu thực.');
-            } finally {
-                setLoading(false);
+                // Tính tổng tiền - Dùng 'totalAmount' hoặc 'totalPrice' tùy API
+                const totalRevenue = deliveredOrders.reduce((sum, order) => {
+                    return sum + (Number(order.totalAmount) || Number(order.totalPrice) || 0);
+                }, 0);
+                
+                setRealData({
+                    revenue: totalRevenue,
+                    orderCount: deliveredOrders.length
+                });
+                setStats(data);
             }
-        };
-        fetchStats();
-    }, []);
+        } catch (error) {
+            message.error('Lỗi cập nhật số liệu.');
+        } finally {
+            setLoading(false);
+        }
+    };
+    fetchStats();
+}, []);
 
     const handleExportExcel = () => {
         if (!stats) return;
