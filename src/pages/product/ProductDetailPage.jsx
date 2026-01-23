@@ -60,11 +60,7 @@ const ProductDetailPage = () => {
     };
 
     if (loading) {
-        return (
-            <div style={{ textAlign: 'center', padding: '100px 0' }}>
-                <Spin size="large" tip="Đang tải dữ liệu..." />
-            </div>
-        );
+        return <div style={{ textAlign: 'center', padding: '100px 0' }}><Spin size="large" /></div>;
     }
 
     if (!product) {
@@ -72,69 +68,80 @@ const ProductDetailPage = () => {
     }
 
     return (
-        <div style={{ padding: '24px', maxWidth: '1200px', margin: '0 auto' }}>
-            <Row gutter={[32, 32]} align="middle">
-                {/* PHẦN HÌNH ẢNH */}
-                <Col xs={24} md={12} style={{ textAlign: 'center' }}>
+        <div style={{ padding: '16px', maxWidth: '1200px', margin: '0 auto', background: '#fff' }}>
+            <Row gutter={[0, 24]} justify="center">
+                {/* ẢNH SẢN PHẨM: Trên mobile sẽ chiếm 100% và nằm trên */}
+                <Col xs={24} md={12} style={{ display: 'flex', justifyContent: 'center' }}>
                     <div style={{ 
-                        background: '#fff', 
-                        padding: '20px', 
-                        borderRadius: '15px',
-                        boxShadow: '0 4px 20px rgba(0,0,0,0.08)' 
+                        width: '100%',
+                        maxWidth: '450px',
+                        padding: '10px',
+                        border: '1px solid #f0f0f0',
+                        borderRadius: '12px',
+                        textAlign: 'center'
                     }}>
                         <Image
                             width="100%"
-                            style={{ maxHeight: '500px', objectFit: 'contain', borderRadius: '8px' }}
+                            style={{ objectFit: 'contain', maxHeight: '400px' }}
                             src={product.imageUrl || 'https://via.placeholder.com/500'}
                             alt={product.name}
                         />
                     </div>
                 </Col>
 
-                {/* PHẦN THÔNG TIN */}
-                <Col xs={24} md={12}>
-                    {/* Hiển thị Category mượt mà */}
-                    {product.category && (
-                        <Tag color="gold" style={{ marginBottom: '12px', fontSize: '14px', padding: '2px 12px' }}>
-                            {product.category.name} 
-                        </Tag>
-                    )}
-                    
-                    <Title level={1} style={{ marginBottom: '16px', fontSize: '28px' }}>{product.name}</Title>
-                    
-                    <Title level={2} style={{ color: '#0B3D91', marginTop: 0 }}>
-                        {formatCurrency(product.price)}
-                    </Title>
+                {/* THÔNG TIN CHI TIẾT */}
+                <Col xs={24} md={12} style={{ padding: '0 8px' }}>
+                    <div style={{ textAlign: 'left' }}>
+                        {product.category && (
+                            <Tag color="blue" style={{ marginBottom: '8px' }}>
+                                {product.category.name}
+                            </Tag>
+                        )}
+                        <Title level={2} style={{ fontSize: '1.5rem', marginBottom: '8px' }}>{product.name}</Title>
+                        <Title level={3} style={{ color: '#0B3D91', marginTop: 0 }}>
+                            {formatCurrency(product.price)}
+                        </Title>
+                    </div>
 
-                    <Divider />
-                    
-                    <Paragraph style={{ fontSize: '16px', color: '#434343', lineHeight: '1.8' }}>
+                    <Divider style={{ margin: '16px 0' }} />
+
+                    <Paragraph style={{ color: '#666', fontSize: '15px' }}>
                         {product.description}
                     </Paragraph>
 
-                    <div style={{ background: '#f9f9f9', padding: '16px', borderRadius: '8px', marginBottom: '24px', border: '1px solid #eee' }}>
-                        <Paragraph><Text strong>Chất liệu:</Text> {product.material || 'Hợp kim cao cấp'}</Paragraph>
-                        <Paragraph style={{ marginBottom: 0 }}>
-                            <Text strong>Tình trạng:</Text> {product.stockQuantity > 0 ? (
-                                <Text type="success"> Còn hàng ({product.stockQuantity} sản phẩm)</Text>
+                    {/* BOX THÔNG SỐ: Tối ưu cho Mobile không bị vỡ dòng */}
+                    <div style={{ 
+                        background: '#fafafa', 
+                        padding: '16px', 
+                        borderRadius: '8px', 
+                        border: '1px solid #f0f0f0',
+                        marginBottom: '20px' 
+                    }}>
+                        <div style={{ marginBottom: '8px' }}>
+                            <Text strong>Chất liệu: </Text>
+                            <Text>{product.material || 'N/A'}</Text>
+                        </div>
+                        <div>
+                            <Text strong>Tình trạng: </Text>
+                            {product.stockQuantity > 0 ? (
+                                <Text type="success">Còn hàng ({product.stockQuantity} sản phẩm)</Text>
                             ) : (
-                                <Text type="danger"> Tạm hết hàng</Text>
+                                <Text type="danger">Hết hàng</Text>
                             )}
-                        </Paragraph>
+                        </div>
                     </div>
 
-                    {/* Dùng Space để căn chỉnh nút bấm và InputNumber */}
-                    <Space size="large" align="center" style={{ width: '100%', flexWrap: 'wrap' }}>
-                        <div>
-                            <Text strong style={{ marginRight: '12px' }}>Số lượng:</Text>
+                    {/* PHẦN CHỌN SỐ LƯỢNG VÀ NÚT MUA */}
+                    <Space direction="vertical" size="middle" style={{ width: '100%' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                            <Text strong>Số lượng:</Text>
                             <InputNumber 
                                 min={1} 
                                 max={product.stockQuantity || 1} 
                                 value={quantity} 
                                 onChange={setQuantity} 
-                                disabled={product.stockQuantity === 0}
                                 size="large"
-                                style={{ width: '80px' }}
+                                style={{ width: '100px' }}
                             />
                         </div>
                         
@@ -142,14 +149,12 @@ const ProductDetailPage = () => {
                             type="primary"
                             icon={<ShoppingCartOutlined />}
                             size="large"
+                            block // Cho nút dài ra hết màn hình trên mobile cho dễ bấm
                             style={{ 
-                                height: '50px', 
-                                padding: '0 40px', 
-                                fontSize: '16px', 
-                                fontWeight: 'bold',
-                                backgroundColor: '#0B3D91',
-                                borderRadius: '6px',
-                                border: 'none'
+                                height: '54px', 
+                                fontSize: '17px', 
+                                fontWeight: '600',
+                                backgroundColor: '#0B3D91'
                             }}
                             onClick={handleAddToCart}
                             disabled={product.stockQuantity === 0 || cartLoading}
@@ -158,8 +163,9 @@ const ProductDetailPage = () => {
                             THÊM VÀO GIỎ HÀNG
                         </Button>
                     </Space>
-                    
-                    <div style={{ height: '80px' }}></div>
+
+                    {/* KHOẢNG TRỐNG ĐỂ NÚT MESSENGER KHÔNG ĐÈ CHỮ */}
+                    <div style={{ height: '100px' }}></div>
                 </Col>
             </Row>
         </div>
