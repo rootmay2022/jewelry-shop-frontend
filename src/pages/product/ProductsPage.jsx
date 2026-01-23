@@ -1,4 +1,3 @@
-// src/pages/product/ProductsPage.jsx
 import React, { useState, useEffect } from 'react';
 import { Row, Col, Spin, Input, Pagination, Empty, Typography } from 'antd';
 import { getAllProducts, searchProducts } from '../../api/productApi';
@@ -11,12 +10,13 @@ const { Title } = Typography;
 const PRODUCTS_PER_PAGE = 12;
 
 const ProductsPage = () => {
-    // Sửa lỗi 2: Khởi tạo state là mảng rỗng [] để tránh lỗi .slice() hoặc .filter()
     const [allProducts, setAllProducts] = useState([]);
     const [filteredProducts, setFilteredProducts] = useState([]);
     const [loading, setLoading] = useState(true);
     const [currentPage, setCurrentPage] = useState(1);
-    const [filters, setFilters] = useState({ category: null, priceRange: null });
+    
+    // FIX: Khởi tạo priceRange lên hẳn 1 tỷ cho ní lọc thoải mái
+    const [filters, setFilters] = useState({ category: null, priceRange: [0, 1000000000] });
 
     useEffect(() => {
         const fetchProducts = async () => {
@@ -24,8 +24,8 @@ const ProductsPage = () => {
             try {
                 const response = await getAllProducts();
                 if (response.success) {
-                    setAllProducts(response.data);
-                    setFilteredProducts(response.data);
+                    setAllProducts(response.data || []);
+                    setFilteredProducts(response.data || []);
                 }
             } catch (error) {
                 console.error("Failed to fetch products:", error);
@@ -34,26 +34,28 @@ const ProductsPage = () => {
             }
         };
         fetchProducts();
-        // Sửa lỗi 1: Thêm dependency array rỗng []
     }, []);
 
     useEffect(() => {
         let productsToFilter = [...allProducts];
 
-        // Lọc theo category
+        // FIX LỖI 1: Ép kiểu Number để lọc Category không bị lẫn lộn
         if (filters.category) {
-            productsToFilter = productsToFilter.filter(p => p.categoryId === filters.category);
+            productsToFilter = productsToFilter.filter(p => 
+                Number(p.categoryId) === Number(filters.category)
+            );
         }
 
-        // Lọc theo khoảng giá
+        // FIX LỖI 2: Xử lý khoảng giá linh hoạt (Trần 1 tỷ)
         if (filters.priceRange && Array.isArray(filters.priceRange)) {
             const [minPrice, maxPrice] = filters.priceRange;
-            // Sửa lỗi 3: Sử dụng minPrice và maxPrice từ mảng priceRange
-            productsToFilter = productsToFilter.filter(p => p.price >= minPrice && p.price <= maxPrice);
+            productsToFilter = productsToFilter.filter(p => 
+                Number(p.price) >= minPrice && Number(p.price) <= maxPrice
+            );
         }
 
         setFilteredProducts(productsToFilter);
-        setCurrentPage(1); // Reset về trang 1 khi có filter mới
+        setCurrentPage(1); 
     }, [filters, allProducts]);
 
     const handleSearch = async (value) => {
@@ -61,9 +63,9 @@ const ProductsPage = () => {
         try {
             const response = await searchProducts(value);
             if (response.success) {
-                setAllProducts(response.data);
-                setFilteredProducts(response.data);
-                setFilters({ category: null, priceRange: null }); // Reset filters
+                setAllProducts(response.data || []);
+                setFilteredProducts(response.data || []);
+                setFilters({ category: null, priceRange: [0, 1000000000] }); 
             }
         } catch (error) {
             console.error("Search failed:", error);
@@ -73,11 +75,9 @@ const ProductsPage = () => {
     };
 
     const handleFilterChange = (newFilters) => {
-        // Cú pháp spread object đã đúng: {...prev,...newFilters}
-        setFilters(prev => ({...prev,...newFilters }));
+        setFilters(prev => ({...prev, ...newFilters }));
     };
 
-    // Đảm bảo filteredProducts là mảng trước khi gọi slice
     const paginatedProducts = filteredProducts.slice(
         (currentPage - 1) * PRODUCTS_PER_PAGE,
         currentPage * PRODUCTS_PER_PAGE
@@ -88,21 +88,19 @@ const ProductsPage = () => {
             <Title level={2}>Tất Cả Sản Phẩm</Title>
             <Row gutter={[24, 24]}>
                 <Col xs={24} md={6}>
-                    <Search placeholder="Tìm kiếm sản phẩm..." onSearch={handleSearch} enterButton style={{ marginBottom: 24 }} />
+                    <Search placeholder="Tìm kiếm..." onSearch={handleSearch} enterButton style={{ marginBottom: 24 }} />
+                    {/* Component này ní nhớ kiểm tra xem trong file đó có Slider max là bao nhiêu nhé */}
                     <ProductFilter onFilterChange={handleFilterChange} />
                 </Col>
                 <Col xs={24} md={18}>
-                    {/* Sửa lỗi 4: Dùng loading ? (Spin) : (Content) */}
                     {loading ? (
                         <div style={{ textAlign: 'center', padding: '50px 0' }}><Spin size="large" /></div>
                     ) : (
                         <>
-                            {/* Sửa lỗi 4: Dùng paginatedProducts.length > 0 ? (Danh sách) : (Empty) */}
                             {paginatedProducts.length > 0 ? (
-                                // Sửa lỗi 5: Thêm giá trị cho gutter, ví dụ [16, 16]
                                 <Row gutter={[16, 16]}>
                                     {paginatedProducts.map(product => (
-                                        <Col xs={24} sm={12} md={8} key={product.id}>
+                                        <Col xs={12} sm={12} md={8} lg={6} key={product.id}>
                                             <ProductCard product={product} />
                                         </Col>
                                     ))}

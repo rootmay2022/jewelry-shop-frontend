@@ -41,7 +41,7 @@ const CheckoutPage = () => {
         const accountNo = "89999999251105"; // Đã sửa theo yêu cầu của ní
         const accountName = "NGUYEN KHANH HUNG"; // Đã sửa tên chuẩn không dấu
         const amount = order.totalAmount;
-        const description = `THANH TOAN DH ${order.id}`;
+        const description = `THANH TOAN ĐƠN HÀNG ${order.id} CỦA BẠN ♥`;
 
         const qrUrl = `https://img.vietqr.io/image/${bankId}-${accountNo}-compact2.png?amount=${amount}&addInfo=${encodeURIComponent(description)}&accountName=${encodeURIComponent(accountName)}`;
 

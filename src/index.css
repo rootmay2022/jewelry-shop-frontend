@@ -102,7 +102,124 @@ img {
     background: #f9f9f9;
     padding: 10px;
   }
+/* src/index.css */
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
 
+body {
+  margin: 0;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
+    'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
+    sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  overflow-x: hidden; /* Ngăn chặn bị tràn ngang trên điện thoại */
+}
+
+img {
+  max-width: 100%;
+  height: auto;
+  display: block;
+}
+
+/* Fix cái banner chính */
+.banner-container img {
+  width: 100%;
+  height: 300px;
+  object-fit: cover;
+}
+
+/* --- Floating Contact Buttons --- */
+.floating-contact {
+  position: fixed;
+  bottom: 20px;
+  right: 15px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  z-index: 9999;
+}
+
+.contact-btn {
+  width: 45px; /* Trên mobile nhỏ lại một xíu cho tinh tế */
+  height: 45px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+  transition: all 0.3s ease;
+  background-color: white;
+  overflow: hidden;
+}
+
+.contact-btn:hover {
+  transform: translateY(-5px);
+}
+
+.contact-btn img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.btn-phone {
+  animation: quick-shake 2s infinite;
+}
+
+@keyframes quick-shake {
+  0%, 100% { transform: rotate(0); }
+  10%, 30%, 50% { transform: rotate(-10deg); }
+  20%, 40%, 60% { transform: rotate(10deg); }
+}
+
+/* --- MOBILE RESPONSIVE (FIX LỖI NHƯ HÌNH NÍ CHỤP) --- */
+@media (max-width: 768px) {
+  /* Fix chữ JEWELRY bị to đè icon */
+  .ant-typography, h1, .logo-text {
+    font-size: 1.2rem !important; 
+  }
+
+  /* Chia 2 cột sản phẩm thay vì 1 cột dài ngoằng */
+  .product-grid, .ant-row {
+    display: flex !important;
+    flex-wrap: wrap !important;
+    margin: 0 !important;
+    justify-content: space-between;
+  }
+
+  /* Mỗi card chiếm gần 50% chiều ngang */
+  .product-card, .ant-col {
+    width: 48% !important; 
+    max-width: 48% !important;
+    flex: 0 0 48% !important;
+    margin-bottom: 15px !important;
+    padding: 0 !important;
+  }
+
+  /* Fix ảnh sản phẩm bị méo */
+  .product-card img, .ant-card-cover img {
+    height: 140px !important;
+    width: 100% !important;
+    object-fit: contain !important; /* Giữ nguyên dáng chai nước hoa */
+    background: #f9f9f9;
+    padding: 10px;
+  }
+
+  /* Header bớt padding cho rộng chỗ */
+  .ant-layout-header {
+    padding: 0 10px !important;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+
+  /* Giảm padding của cái khung trắng bao quanh nội dung */
+  .ant-layout-content {
+    padding: 0 10px !important;
+  }
+}
   /* Header bớt padding cho rộng chỗ */
   .ant-layout-header {
     padding: 0 10px !important;
