@@ -39,7 +39,7 @@ const CheckoutPage = () => {
     // HÀM HIỂN THỊ QR CODE ĐỘNG - Cập nhật STK mới của ní
     const showPaymentQR = (order) => {
         const bankId = "MB"; // Ngân hàng Quân Đội
-        const accountNo = "988888888251105"; // SỐ TÀI KHOẢN MỚI CỦA NÍ
+        const accountNo = "89999999251105"; // SỐ TÀI KHOẢN MỚI CỦA NÍ
         const accountName = "TRAN KHANH HUNG"; 
         const amount = order.totalAmount;
         const description = `THANH TOAN DH ${order.id}`;
