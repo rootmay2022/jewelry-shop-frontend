@@ -6,7 +6,8 @@ import { getProductById } from '../../api/productApi';
 import { useCart } from '../../context/CartContext';
 import { useAuth } from '../../context/AuthContext';
 import formatCurrency from '../../utils/formatCurrency';
-
+// Sửa dòng này ở đầu file ProductDetailPage.jsx
+import { Row, Col, Image, Typography, InputNumber, Button, Spin, message, Divider, Tag, Space } from 'antd';
 const { Title, Paragraph, Text } = Typography;
 
 const ProductDetailPage = () => {
