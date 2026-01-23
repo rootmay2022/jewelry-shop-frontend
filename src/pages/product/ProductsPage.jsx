@@ -1,11 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import { Row, Col, Spin, Input, Pagination, Empty, Typography } from 'antd';
+import { Row, Col, Spin, Input, Pagination, Empty, Typography, Card, Checkbox, Slider, Space, Divider } from 'antd';
 import { getAllProducts, searchProducts } from '../../api/productApi';
 import ProductCard from '../../components/product/ProductCard';
-import ProductFilter from '../../components/product/ProductFilter';
+import formatCurrency from '../../utils/formatCurrency';
 
 const { Search } = Input;
-const { Title } = Typography;
+const { Title, Text } = Typography;
 
 const PRODUCTS_PER_PAGE = 12;
 
@@ -15,7 +15,7 @@ const ProductsPage = () => {
     const [loading, setLoading] = useState(true);
     const [currentPage, setCurrentPage] = useState(1);
     
-    // FIX: Khởi tạo priceRange lên hẳn 1 tỷ cho ní lọc thoải mái
+    // FIX: Trần giá mặc định 1 tỷ để không bị giới hạn 50tr
     const [filters, setFilters] = useState({ category: null, priceRange: [0, 1000000000] });
 
     useEffect(() => {
@@ -28,7 +28,7 @@ const ProductsPage = () => {
                     setFilteredProducts(response.data || []);
                 }
             } catch (error) {
-                console.error("Failed to fetch products:", error);
+                console.error("Lỗi tải sản phẩm:", error);
             } finally {
                 setLoading(false);
             }
@@ -36,21 +36,22 @@ const ProductsPage = () => {
         fetchProducts();
     }, []);
 
+    // LOGIC LỌC SẢN PHẨM
     useEffect(() => {
         let productsToFilter = [...allProducts];
 
-        // FIX LỖI 1: Ép kiểu Number để lọc Category không bị lẫn lộn
+        // 1. Lọc theo danh mục (Sửa vụ lộn Nước hoa/Dây chuyền)
         if (filters.category) {
             productsToFilter = productsToFilter.filter(p => 
                 Number(p.categoryId) === Number(filters.category)
             );
         }
 
-        // FIX LỖI 2: Xử lý khoảng giá linh hoạt (Trần 1 tỷ)
-        if (filters.priceRange && Array.isArray(filters.priceRange)) {
-            const [minPrice, maxPrice] = filters.priceRange;
+        // 2. Lọc theo khoảng giá (Lên tới 1 tỷ)
+        if (filters.priceRange) {
+            const [min, max] = filters.priceRange;
             productsToFilter = productsToFilter.filter(p => 
-                Number(p.price) >= minPrice && Number(p.price) <= maxPrice
+                Number(p.price) >= min && Number(p.price) <= max
             );
         }
 
@@ -68,14 +69,10 @@ const ProductsPage = () => {
                 setFilters({ category: null, priceRange: [0, 1000000000] }); 
             }
         } catch (error) {
-            console.error("Search failed:", error);
+            console.error("Tìm kiếm thất bại:", error);
         } finally {
             setLoading(false);
         }
-    };
-
-    const handleFilterChange = (newFilters) => {
-        setFilters(prev => ({...prev, ...newFilters }));
     };
 
     const paginatedProducts = filteredProducts.slice(
@@ -84,17 +81,56 @@ const ProductsPage = () => {
     );
 
     return (
-        <div style={{ padding: '0 24px' }}>
-            <Title level={2}>Tất Cả Sản Phẩm</Title>
+        <div style={{ padding: '24px' }}>
+            <Title level={2}>Cửa Hàng</Title>
             <Row gutter={[24, 24]}>
+                {/* BỘ LỌC NẰM Ở ĐÂY LUÔN, KHÔNG CẦN FILE RIÊNG */}
                 <Col xs={24} md={6}>
-                    <Search placeholder="Tìm kiếm..." onSearch={handleSearch} enterButton style={{ marginBottom: 24 }} />
-                    {/* Component này ní nhớ kiểm tra xem trong file đó có Slider max là bao nhiêu nhé */}
-                    <ProductFilter onFilterChange={handleFilterChange} />
+                    <Search 
+                        placeholder="Tìm sản phẩm..." 
+                        onSearch={handleSearch} 
+                        enterButton 
+                        style={{ marginBottom: 20 }} 
+                    />
+                    
+                    <Card title="Bộ Lọc Tìm Kiếm" variant="outlined">
+                        <Space direction="vertical" style={{ width: '100%' }}>
+                            <Text strong>Danh mục</Text>
+                            <Checkbox.Group 
+                                style={{ width: '100%' }} 
+                                onChange={(vals) => setFilters(prev => ({...prev, category: vals[vals.length-1]}))}
+                            >
+                                <Space direction="vertical">
+                                    <Checkbox value={1}>Nước Hoa</Checkbox>
+                                    <Checkbox value={2}>Trang Sức</Checkbox>
+                                    <Checkbox value={3}>Phụ Kiện</Checkbox>
+                                </Space>
+                            </Checkbox.Group>
+
+                            <Divider />
+
+                            <Text strong>Khoảng giá (VNĐ)</Text>
+                            <Slider
+                                range
+                                step={1000000}
+                                min={0}
+                                max={1000000000} // NÂNG LÊN 1 TỶ Ở ĐÂY NÈ NÍ!
+                                defaultValue={[0, 1000000000]}
+                                onChangeComplete={(val) => setFilters(prev => ({...prev, priceRange: val}))}
+                                tooltip={{ formatter: (v) => formatCurrency(v) }}
+                            />
+                            <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                                <Text type="secondary">0</Text>
+                                <Text type="secondary">1 Tỷ</Text>
+                            </div>
+                        </Space>
+                    </Card>
                 </Col>
+
+                {/* DANH SÁCH SẢN PHẨM */}
                 <Col xs={24} md={18}>
                     {loading ? (
-                        <div style={{ textAlign: 'center', padding: '50px 0' }}><Spin size="large" /></div>
+                        <div style={{ textAlign: 'center', padding: '50px' }}><Spin size="large" /></div>
                     ) : (
                         <>
                             {paginatedProducts.length > 0 ? (
@@ -106,17 +142,17 @@ const ProductsPage = () => {
                                     ))}
                                 </Row>
                             ) : (
-                                <Empty description="Không tìm thấy sản phẩm nào." />
+                                <Empty description="Không có sản phẩm nào phù hợp." />
                             )}
-                            {filteredProducts.length > PRODUCTS_PER_PAGE && (
-                                <Pagination
-                                    current={currentPage}
-                                    pageSize={PRODUCTS_PER_PAGE}
-                                    total={filteredProducts.length}
-                                    onChange={(page) => setCurrentPage(page)}
-                                    style={{ marginTop: 24, textAlign: 'center' }}
-                                />
-                            )}
+                            
+                            <Pagination
+                                current={currentPage}
+                                pageSize={PRODUCTS_PER_PAGE}
+                                total={filteredProducts.length}
+                                onChange={(p) => setCurrentPage(p)}
+                                style={{ marginTop: 30, textAlign: 'center' }}
+                                hideOnSinglePage
+                            />
                         </>
                     )}
                 </Col>
