@@ -39,19 +39,22 @@ const Login = () => {
       display: 'flex', 
       justifyContent: 'center', 
       alignItems: 'center', 
-      minHeight: '80vh',
-      padding: '0 20px' // Chống dính lề Mobile
+      minHeight: '85vh',
+      padding: '10px', // Giảm lề ngoài để card nở rộng ra
+      backgroundColor: '#f5f5f5'
     }}>
       <Card 
         style={{ 
           width: '100%', 
           maxWidth: 400, 
-          borderRadius: '12px',
-          boxShadow: '0 4px 12px rgba(0,0,0,0.1)' 
+          borderRadius: '16px',
+          boxShadow: '0 8px 24px rgba(0,0,0,0.08)',
+          border: 'none' 
         }}
+        bodyStyle={{ padding: '30px 16px' }} // Giảm padding trong để Input dài ra
       >
-        <Title level={2} style={{ textAlign: 'center', marginBottom: '30px' }}>Đăng Nhập</Title>
-        <Form name="login" onFinish={onFinish} layout="vertical">
+        <Title level={2} style={{ textAlign: 'center', marginBottom: '30px', color: '#0B3D91' }}>Đăng Nhập</Title>
+        <Form name="login" onFinish={onFinish} layout="vertical" requiredMark={false}>
           <Form.Item
             name="username"
             rules={[{ required: true, message: 'Vui lòng nhập tên đăng nhập!' }]}
@@ -60,6 +63,7 @@ const Login = () => {
               prefix={<UserOutlined style={{ color: '#bfbfbf' }} />} 
               placeholder="Tên đăng nhập" 
               size="large"
+              style={{ borderRadius: '8px' }}
             />
           </Form.Item>
           <Form.Item
@@ -70,19 +74,21 @@ const Login = () => {
               prefix={<LockOutlined style={{ color: '#bfbfbf' }} />} 
               placeholder="Mật khẩu" 
               size="large"
+              style={{ borderRadius: '8px' }}
             />
           </Form.Item>
-          <Form.Item style={{ marginBottom: '12px' }}>
-            <Button type="primary" htmlType="submit" loading={loading} block size="large">
+          <Form.Item style={{ marginBottom: '12px', marginTop: '20px' }}>
+            <Button type="primary" htmlType="submit" loading={loading} block size="large" 
+              style={{ height: '50px', borderRadius: '8px', backgroundColor: '#0B3D91', fontWeight: '600' }}>
               Đăng Nhập
             </Button>
           </Form.Item>
           <div style={{ textAlign: 'center', marginTop: '16px' }}>
-            Chưa có tài khoản? <Link to="/register">Đăng ký ngay!</Link>
+            Chưa có tài khoản? <Link to="/register" style={{ fontWeight: '600', color: '#0B3D91' }}>Đăng ký ngay!</Link>
           </div>
+          {/* Né nút Messenger/Zalo trên mobile */}
+          <div style={{ height: '80px' }}></div>
         </Form>
-        {/* Khoảng trống tránh nút Messenger đè link đăng ký */}
-        <div style={{ height: '20px' }}></div>
       </Card>
     </div>
   );

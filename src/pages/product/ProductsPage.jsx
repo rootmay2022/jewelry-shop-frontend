@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { Row, Col, Spin, Input, Pagination, Empty, Typography, Card, Checkbox, Slider, Space, Divider } from 'antd';
+import { Row, Col, Spin, Input, Pagination, Empty, Typography, Card, Checkbox, Slider, Space, Divider, Button, Drawer } from 'antd';
+import { FilterOutlined } from '@ant-design/icons';
 import { getAllProducts, searchProducts } from '../../api/productApi';
 import ProductCard from '../../components/product/ProductCard';
 import formatCurrency from '../../utils/formatCurrency';
@@ -14,8 +15,8 @@ const ProductsPage = () => {
     const [filteredProducts, setFilteredProducts] = useState([]);
     const [loading, setLoading] = useState(true);
     const [currentPage, setCurrentPage] = useState(1);
+    const [isDrawerVisible, setIsDrawerVisible] = useState(false); // Trạng thái đóng/mở bộ lọc trên mobile
     
-    // FIX: Trần giá mặc định 1 tỷ để không bị giới hạn 50tr
     const [filters, setFilters] = useState({ category: null, priceRange: [0, 1000000000] });
 
     useEffect(() => {
@@ -36,25 +37,19 @@ const ProductsPage = () => {
         fetchProducts();
     }, []);
 
-    // LOGIC LỌC SẢN PHẨM
     useEffect(() => {
         let productsToFilter = [...allProducts];
-
-        // 1. Lọc theo danh mục (Sửa vụ lộn Nước hoa/Dây chuyền)
         if (filters.category) {
             productsToFilter = productsToFilter.filter(p => 
                 Number(p.categoryId) === Number(filters.category)
             );
         }
-
-        // 2. Lọc theo khoảng giá (Lên tới 1 tỷ)
         if (filters.priceRange) {
             const [min, max] = filters.priceRange;
             productsToFilter = productsToFilter.filter(p => 
                 Number(p.price) >= min && Number(p.price) <= max
             );
         }
-
         setFilteredProducts(productsToFilter);
         setCurrentPage(1); 
     }, [filters, allProducts]);
@@ -80,50 +75,67 @@ const ProductsPage = () => {
         currentPage * PRODUCTS_PER_PAGE
     );
 
+    // Render nội dung bộ lọc để tái sử dụng
+    const FilterContent = () => (
+        <Space direction="vertical" style={{ width: '100%' }}>
+            <Text strong>Danh mục</Text>
+            <Checkbox.Group 
+                style={{ width: '100%' }} 
+                value={filters.category ? [filters.category] : []}
+                onChange={(vals) => setFilters(prev => ({...prev, category: vals[vals.length-1]}))}
+            >
+                <Space direction="vertical">
+                    <Checkbox value={1}>Nước Hoa</Checkbox>
+                    <Checkbox value={2}>Trang Sức</Checkbox>
+                    <Checkbox value={3}>Phụ Kiện</Checkbox>
+                </Space>
+            </Checkbox.Group>
+            <Divider />
+            <Text strong>Khoảng giá (VNĐ)</Text>
+            <Slider
+                range
+                step={1000000}
+                min={0}
+                max={1000000000}
+                defaultValue={filters.priceRange}
+                onChangeComplete={(val) => setFilters(prev => ({...prev, priceRange: val}))}
+                tooltip={{ formatter: (v) => formatCurrency(v) }}
+            />
+            <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                <Text type="secondary" style={{ fontSize: '12px' }}>0</Text>
+                <Text type="secondary" style={{ fontSize: '12px' }}>1 Tỷ</Text>
+            </div>
+        </Space>
+    );
+
     return (
-        <div style={{ padding: '24px' }}>
-            <Title level={2}>Cửa Hàng</Title>
-            <Row gutter={[24, 24]}>
-                {/* BỘ LỌC NẰM Ở ĐÂY LUÔN, KHÔNG CẦN FILE RIÊNG */}
-                <Col xs={24} md={6}>
-                    <Search 
-                        placeholder="Tìm sản phẩm..." 
-                        onSearch={handleSearch} 
-                        enterButton 
-                        style={{ marginBottom: 20 }} 
-                    />
-                    
+        <div style={{ padding: '16px' }}>
+            <Title level={2} style={{ textAlign: 'center', marginBottom: '24px' }}>Cửa Hàng</Title>
+            
+            <Row gutter={[16, 16]}>
+                {/* THANH TÌM KIẾM VÀ NÚT BỘ LỌC CHO MOBILE */}
+                <Col span={24}>
+                    <div style={{ display: 'flex', gap: '8px', marginBottom: '16px' }}>
+                        <Search 
+                            placeholder="Tìm sản phẩm..." 
+                            onSearch={handleSearch} 
+                            enterButton 
+                            style={{ flex: 1 }}
+                        />
+                        {/* Nút lọc chỉ hiện trên mobile */}
+                        <Button 
+                            className="mobile-filter-btn"
+                            icon={<FilterOutlined />} 
+                            onClick={() => setIsDrawerVisible(true)}
+                            style={{ display: 'none' }} // Sẽ được điều khiển bằng CSS hoặc logic ẩn hiện
+                        />
+                    </div>
+                </Col>
+
+                {/* BỘ LỌC BÊN TRÁI (ẨN TRÊN MOBILE, HIỆN TRÊN PC) */}
+                <Col xs={0} md={6}>
                     <Card title="Bộ Lọc Tìm Kiếm" variant="outlined">
-                        <Space direction="vertical" style={{ width: '100%' }}>
-                            <Text strong>Danh mục</Text>
-                            <Checkbox.Group 
-                                style={{ width: '100%' }} 
-                                onChange={(vals) => setFilters(prev => ({...prev, category: vals[vals.length-1]}))}
-                            >
-                                <Space direction="vertical">
-                                    <Checkbox value={1}>Nước Hoa</Checkbox>
-                                    <Checkbox value={2}>Trang Sức</Checkbox>
-                                    <Checkbox value={3}>Phụ Kiện</Checkbox>
-                                </Space>
-                            </Checkbox.Group>
-
-                            <Divider />
-
-                            <Text strong>Khoảng giá (VNĐ)</Text>
-                            <Slider
-                                range
-                                step={1000000}
-                                min={0}
-                                max={1000000000} // NÂNG LÊN 1 TỶ Ở ĐÂY NÈ NÍ!
-                                defaultValue={[0, 1000000000]}
-                                onChangeComplete={(val) => setFilters(prev => ({...prev, priceRange: val}))}
-                                tooltip={{ formatter: (v) => formatCurrency(v) }}
-                            />
-                            <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                                <Text type="secondary">0</Text>
-                                <Text type="secondary">1 Tỷ</Text>
-                            </div>
-                        </Space>
+                        <FilterContent />
                     </Card>
                 </Col>
 
@@ -134,9 +146,10 @@ const ProductsPage = () => {
                     ) : (
                         <>
                             {paginatedProducts.length > 0 ? (
-                                <Row gutter={[16, 16]}>
+                                <Row gutter={[12, 12]}>
                                     {paginatedProducts.map(product => (
-                                        <Col xs={12} sm={12} md={8} lg={6} key={product.id}>
+                                        // XS={24} giúp 1 hàng 1 sản phẩm trên mobile cho đỡ bị vỡ chữ
+                                        <Col xs={24} sm={12} md={8} lg={6} key={product.id}>
                                             <ProductCard product={product} />
                                         </Col>
                                     ))}
@@ -150,13 +163,24 @@ const ProductsPage = () => {
                                 pageSize={PRODUCTS_PER_PAGE}
                                 total={filteredProducts.length}
                                 onChange={(p) => setCurrentPage(p)}
-                                style={{ marginTop: 30, textAlign: 'center' }}
+                                style={{ marginTop: 40, textAlign: 'center' }}
                                 hideOnSinglePage
                             />
                         </>
                     )}
                 </Col>
             </Row>
+
+            {/* KHOẢNG TRỐNG CHỐNG ĐÈ NÚT MESSENGER */}
+            <div style={{ height: '80px' }}></div>
+
+            {/* CSS INLINE ĐỂ XỬ LÝ ẨN HIỆN NHANH */}
+            <style>{`
+                @media (max-width: 768px) {
+                    .mobile-filter-btn { display: inline-block !important; }
+                    /* Có thể thêm code cho bộ lọc hiện ở trên đầu nếu không muốn dùng Drawer */
+                }
+            `}</style>
         </div>
     );
 };
