@@ -77,12 +77,20 @@ const CheckoutPage = () => {
     const handlePlaceOrder = async (values) => {
         setLoading(true);
         try {
-            const response = await createOrder(values);
+            // Chuẩn bị dữ liệu gửi lên BE
+            const orderData = {
+                shippingAddress: values.shippingAddress,
+                paymentMethod: values.paymentMethod
+            };
+            
+            const response = await createOrder(orderData);
             
             if (response.success) {
-                const newOrder = response.data;
+                const newOrder = response.data; // Đây là OrderResponse có totalAmount ní vừa thêm
+                
+                // NẾU CHỌN CHUYỂN KHOẢN -> GỌI HÀM HIỂN THỊ QR NGAY TẠI ĐÂY
                 if (values.paymentMethod === 'BANK_TRANSFER') {
-                    showPaymentQR(newOrder);
+                    showPaymentQR(newOrder); // <--- NÍ THIẾU DÒNG QUAN TRỌNG NÀY NÈ!
                 } else {
                     message.success('Đặt hàng thành công!');
                     await clearCart();
