@@ -1,13 +1,24 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { Row, Col, Image, Typography, InputNumber, Button, Spin, message, Divider, Tag } from 'antd';
+import { 
+    Row, 
+    Col, 
+    Image, 
+    Typography, 
+    InputNumber, 
+    Button, 
+    Spin, 
+    message, 
+    Divider, 
+    Tag, 
+    Space 
+} from 'antd'; // Tui đã gom hết vào một dòng cho ní rồi đây
 import { ShoppingCartOutlined } from '@ant-design/icons';
 import { getProductById } from '../../api/productApi';
 import { useCart } from '../../context/CartContext';
 import { useAuth } from '../../context/AuthContext';
 import formatCurrency from '../../utils/formatCurrency';
-// Sửa dòng này ở đầu file ProductDetailPage.jsx
-import { Row, Col, Image, Typography, InputNumber, Button, Spin, message, Divider, Tag, Space } from 'antd';
+
 const { Title, Paragraph, Text } = Typography;
 
 const ProductDetailPage = () => {
@@ -59,7 +70,7 @@ const ProductDetailPage = () => {
     return (
         <div style={{ padding: '24px', maxWidth: '1200px', margin: '0 auto' }}>
             <Row gutter={[32, 32]} align="middle">
-                {/* ẢNH SẢN PHẨM: Fix Mobile bị to quá khổ */}
+                {/* ẢNH SẢN PHẨM */}
                 <Col xs={24} md={12} style={{ textAlign: 'center' }}>
                     <div style={{ 
                         background: '#fff', 
@@ -69,7 +80,7 @@ const ProductDetailPage = () => {
                     }}>
                         <Image
                             width="100%"
-                            style={{ maxWidth: '400px', objectFit: 'contain' }}
+                            style={{ maxWidth: '400px', objectFit: 'contain', borderRadius: '8px' }}
                             src={product.imageUrl || 'https://via.placeholder.com/500'}
                             alt={product.name}
                         />
@@ -78,7 +89,7 @@ const ProductDetailPage = () => {
 
                 {/* THÔNG TIN SẢN PHẨM */}
                 <Col xs={24} md={12}>
-                    {/* FIX VỤ LỘN TAG: Kiểm tra đúng trường dữ liệu từ API */}
+                    {/* Tag danh mục */}
                     {product.category && (
                         <Tag color="gold" style={{ marginBottom: '12px', fontSize: '14px', padding: '2px 12px' }}>
                             {product.category.name} 
@@ -130,7 +141,8 @@ const ProductDetailPage = () => {
                                 padding: '0 40px', 
                                 fontSize: '16px', 
                                 fontWeight: 'bold',
-                                backgroundColor: '#0B3D91'
+                                backgroundColor: '#0B3D91',
+                                border: 'none'
                             }}
                             onClick={handleAddToCart}
                             disabled={product.stockQuantity === 0 || cartLoading}
@@ -140,7 +152,7 @@ const ProductDetailPage = () => {
                         </Button>
                     </Space>
                     
-                    {/* Khoảng trống để không bị nút Messenger đè */}
+                    {/* Chống bị đè bởi các nút nổi như Chat/Messenger */}
                     <div style={{ height: '60px' }}></div>
                 </Col>
             </Row>
