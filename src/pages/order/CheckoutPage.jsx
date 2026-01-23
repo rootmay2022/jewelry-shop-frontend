@@ -5,7 +5,7 @@ import { useCart } from '../../context/CartContext';
 import { useAuth } from '../../context/AuthContext';
 import { createOrder } from '../../api/orderApi';
 import formatCurrency from '../../utils/formatCurrency';
-import LocationPicker from '../../components/common/LocationPicker'; // Ní nhớ tạo file này như tui chỉ nha
+import LocationPicker from '../../components/cart/LocationPicker'; // Ní nhớ tạo file này như tui chỉ nha
 
 const { Title, Text } = Typography;
 const { TextArea } = Input;
