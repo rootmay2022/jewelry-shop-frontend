@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { Row, Col, Spin, Input, Pagination, Empty, Typography, Card, Checkbox, Slider, Space, Divider, Button, Drawer } from 'antd';
 import { FilterOutlined } from '@ant-design/icons';
 import { getAllProducts, searchProducts } from '../../api/productApi';
@@ -15,9 +15,26 @@ const ProductsPage = () => {
     const [filteredProducts, setFilteredProducts] = useState([]);
     const [loading, setLoading] = useState(true);
     const [currentPage, setCurrentPage] = useState(1);
-    const [isDrawerVisible, setIsDrawerVisible] = useState(false); // Trạng thái đóng/mở bộ lọc trên mobile
+    const [isDrawerVisible, setIsDrawerVisible] = useState(false);
     
-    const [filters, setFilters] = useState({ category: null, priceRange: [0, 1000000000] });
+    // Thêm brand vào filters
+    const [filters, setFilters] = useState({ 
+        category: null, 
+        priceRange: [0, 1000000000],
+        brand: null 
+    });
+
+    // Tự động trích xuất danh sách thương hiệu từ tên sản phẩm để AI dễ đọc
+    const brands = useMemo(() => {
+        const commonBrands = ['Dior', 'Chanel', 'Gucci', 'Hermes', 'Louis Vuitton', 'Cartier'];
+        const foundBrands = new Set();
+        allProducts.forEach(p => {
+            commonBrands.forEach(b => {
+                if (p.name.toLowerCase().includes(b.toLowerCase())) foundBrands.add(b);
+            });
+        });
+        return Array.from(foundBrands);
+    }, [allProducts]);
 
     useEffect(() => {
         const fetchProducts = async () => {
@@ -37,19 +54,29 @@ const ProductsPage = () => {
         fetchProducts();
     }, []);
 
+    // Logic lọc sản phẩm bao gồm cả lọc theo Brand
     useEffect(() => {
         let productsToFilter = [...allProducts];
+        
         if (filters.category) {
             productsToFilter = productsToFilter.filter(p => 
                 Number(p.categoryId) === Number(filters.category)
             );
         }
+
+        if (filters.brand) {
+            productsToFilter = productsToFilter.filter(p => 
+                p.name.toLowerCase().includes(filters.brand.toLowerCase())
+            );
+        }
+
         if (filters.priceRange) {
             const [min, max] = filters.priceRange;
             productsToFilter = productsToFilter.filter(p => 
                 Number(p.price) >= min && Number(p.price) <= max
             );
         }
+        
         setFilteredProducts(productsToFilter);
         setCurrentPage(1); 
     }, [filters, allProducts]);
@@ -61,7 +88,7 @@ const ProductsPage = () => {
             if (response.success) {
                 setAllProducts(response.data || []);
                 setFilteredProducts(response.data || []);
-                setFilters({ category: null, priceRange: [0, 1000000000] }); 
+                setFilters({ category: null, priceRange: [0, 1000000000], brand: null }); 
             }
         } catch (error) {
             console.error("Tìm kiếm thất bại:", error);
@@ -75,7 +102,6 @@ const ProductsPage = () => {
         currentPage * PRODUCTS_PER_PAGE
     );
 
-    // Render nội dung bộ lọc để tái sử dụng
     const FilterContent = () => (
         <Space direction="vertical" style={{ width: '100%' }}>
             <Text strong>Danh mục</Text>
@@ -90,21 +116,34 @@ const ProductsPage = () => {
                     <Checkbox value={3}>Phụ Kiện</Checkbox>
                 </Space>
             </Checkbox.Group>
-            <Divider />
+
+            <Divider style={{ margin: '12px 0' }} />
+            
+            <Text strong>Thương hiệu</Text>
+            <Checkbox.Group 
+                style={{ width: '100%' }} 
+                value={filters.brand ? [filters.brand] : []}
+                onChange={(vals) => setFilters(prev => ({...prev, brand: vals[vals.length-1]}))}
+            >
+                <Space direction="vertical">
+                    {brands.length > 0 ? brands.map(b => (
+                        <Checkbox key={b} value={b}>{b}</Checkbox>
+                    )) : <Text type="secondary" italic>Đang cập nhật...</Text>}
+                </Space>
+            </Checkbox.Group>
+
+            <Divider style={{ margin: '12px 0' }} />
+
             <Text strong>Khoảng giá (VNĐ)</Text>
             <Slider
                 range
                 step={1000000}
                 min={0}
                 max={1000000000}
-                defaultValue={filters.priceRange}
+                value={filters.priceRange}
                 onChangeComplete={(val) => setFilters(prev => ({...prev, priceRange: val}))}
                 tooltip={{ formatter: (v) => formatCurrency(v) }}
             />
-            <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                <Text type="secondary" style={{ fontSize: '12px' }}>0</Text>
-                <Text type="secondary" style={{ fontSize: '12px' }}>1 Tỷ</Text>
-            </div>
         </Space>
     );
 
@@ -113,7 +152,6 @@ const ProductsPage = () => {
             <Title level={2} style={{ textAlign: 'center', marginBottom: '24px' }}>Cửa Hàng</Title>
             
             <Row gutter={[16, 16]}>
-                {/* THANH TÌM KIẾM VÀ NÚT BỘ LỌC CHO MOBILE */}
                 <Col span={24}>
                     <div style={{ display: 'flex', gap: '8px', marginBottom: '16px' }}>
                         <Search 
@@ -122,24 +160,20 @@ const ProductsPage = () => {
                             enterButton 
                             style={{ flex: 1 }}
                         />
-                        {/* Nút lọc chỉ hiện trên mobile */}
                         <Button 
                             className="mobile-filter-btn"
                             icon={<FilterOutlined />} 
                             onClick={() => setIsDrawerVisible(true)}
-                            style={{ display: 'none' }} // Sẽ được điều khiển bằng CSS hoặc logic ẩn hiện
                         />
                     </div>
                 </Col>
 
-                {/* BỘ LỌC BÊN TRÁI (ẨN TRÊN MOBILE, HIỆN TRÊN PC) */}
                 <Col xs={0} md={6}>
                     <Card title="Bộ Lọc Tìm Kiếm" variant="outlined">
                         <FilterContent />
                     </Card>
                 </Col>
 
-                {/* DANH SÁCH SẢN PHẨM */}
                 <Col xs={24} md={18}>
                     {loading ? (
                         <div style={{ textAlign: 'center', padding: '50px' }}><Spin size="large" /></div>
@@ -148,8 +182,7 @@ const ProductsPage = () => {
                             {paginatedProducts.length > 0 ? (
                                 <Row gutter={[12, 12]}>
                                     {paginatedProducts.map(product => (
-                                        // XS={24} giúp 1 hàng 1 sản phẩm trên mobile cho đỡ bị vỡ chữ
-                                        <Col xs={24} sm={12} md={8} lg={6} key={product.id}>
+                                        <Col xs={12} sm={12} md={8} lg={6} key={product.id}>
                                             <ProductCard product={product} />
                                         </Col>
                                     ))}
@@ -171,15 +204,22 @@ const ProductsPage = () => {
                 </Col>
             </Row>
 
-            {/* KHOẢNG TRỐNG CHỐNG ĐÈ NÚT MESSENGER */}
-            <div style={{ height: '80px' }}></div>
+            <Drawer
+                title="Bộ lọc sản phẩm"
+                placement="right"
+                onClose={() => setIsDrawerVisible(false)}
+                open={isDrawerVisible}
+            >
+                <FilterContent />
+            </Drawer>
 
-            {/* CSS INLINE ĐỂ XỬ LÝ ẨN HIỆN NHANH */}
+            <div style={{ height: '100px' }}></div>
+
             <style>{`
                 @media (max-width: 768px) {
                     .mobile-filter-btn { display: inline-block !important; }
-                    /* Có thể thêm code cho bộ lọc hiện ở trên đầu nếu không muốn dùng Drawer */
                 }
+                .mobile-filter-btn { display: none; }
             `}</style>
         </div>
     );
