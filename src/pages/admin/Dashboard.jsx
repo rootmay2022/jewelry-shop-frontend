@@ -7,7 +7,8 @@ import formatCurrency from '../../utils/formatCurrency';
 import * as XLSX from 'xlsx'; 
 import dayjs from 'dayjs';
 
-const { Title } = Typography;
+// 🔥 SỬA LỖI Ở ĐÂY: Thêm Text vào để tránh trùng với đối tượng DOM của trình duyệt
+const { Title, Text } = Typography; 
 const COLORS = ['#52c41a', '#FFBB28', '#FF8042', '#1890ff', '#FF4D4F'];
 
 const Dashboard = () => {
@@ -23,11 +24,10 @@ const Dashboard = () => {
                 if (response.success) {
                     const data = response.data;
                     
-                    // 🔥 SỬA LỖI TÍNH TOÁN: Lấy danh sách đơn hàng thực tế từ API
-                    // Ưu tiên lấy từ data.allOrders hoặc data.orders trả về từ Backend
+                    // Lấy danh sách đơn hàng thực tế
                     const ordersList = data.allOrders || data.orders || [];
 
-                    // Chỉ lọc các đơn có trạng thái "Đã giao" (DELIVERED)
+                    // Chỉ lọc các đơn "Đã giao"
                     const deliveredOrders = ordersList.filter(order => order.status === 'DELIVERED');
 
                     // Cộng dồn doanh thu tự động
