@@ -17,23 +17,34 @@ const ProductsPage = () => {
     const [currentPage, setCurrentPage] = useState(1);
     const [isDrawerVisible, setIsDrawerVisible] = useState(false);
     
-    // Thêm brand vào filters
     const [filters, setFilters] = useState({ 
         category: null, 
         priceRange: [0, 1000000000],
         brand: null 
     });
 
-    // Tự động trích xuất danh sách thương hiệu từ tên sản phẩm để AI dễ đọc
+    // DANH SÁCH THƯƠNG HIỆU NỔI TIẾNG (Dễ dàng mở rộng)
     const brands = useMemo(() => {
-        const commonBrands = ['Dior', 'Chanel', 'Gucci', 'Hermes', 'Louis Vuitton', 'Cartier'];
+        const famousBrands = [
+            // Nước hoa & Mỹ phẩm
+            'Dior', 'Chanel', 'Gucci', 'Hermes', 'Creed', 'Le Labo', 'Tom Ford', 'Killian', 'Roja', 'Parfums de Marly',
+            // Trang sức & Đồng hồ
+            'Cartier', 'Tiffany & Co', 'Bulgari', 'Van Cleef & Arpels', 'Rolex', 'Patek Philippe', 'Hublot', 'Omega',
+            // Thời trang cao cấp
+            'Louis Vuitton', 'Prada', 'Burberry', 'Versace', 'YSL', 'Saint Laurent'
+        ];
+        
         const foundBrands = new Set();
         allProducts.forEach(p => {
-            commonBrands.forEach(b => {
-                if (p.name.toLowerCase().includes(b.toLowerCase())) foundBrands.add(b);
+            famousBrands.forEach(b => {
+                // Kiểm tra xem tên sản phẩm có chứa tên thương hiệu không (không phân biệt hoa thường)
+                if (p.name && p.name.toLowerCase().includes(b.toLowerCase())) {
+                    foundBrands.add(b);
+                }
             });
         });
-        return Array.from(foundBrands);
+        // Sắp xếp tên thương hiệu theo bảng chữ cái cho chuyên nghiệp
+        return Array.from(foundBrands).sort();
     }, [allProducts]);
 
     useEffect(() => {
@@ -54,7 +65,6 @@ const ProductsPage = () => {
         fetchProducts();
     }, []);
 
-    // Logic lọc sản phẩm bao gồm cả lọc theo Brand
     useEffect(() => {
         let productsToFilter = [...allProducts];
         
@@ -139,11 +149,15 @@ const ProductsPage = () => {
                 range
                 step={1000000}
                 min={0}
-                max={1000000000}
+                max={50000000}
                 value={filters.priceRange}
                 onChangeComplete={(val) => setFilters(prev => ({...prev, priceRange: val}))}
                 tooltip={{ formatter: (v) => formatCurrency(v) }}
             />
+            <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                <Text type="secondary" style={{ fontSize: '12px' }}>0đ</Text>
+                <Text type="secondary" style={{ fontSize: '12px' }}>50tr+</Text>
+            </div>
         </Space>
     );
 
