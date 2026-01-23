@@ -5,6 +5,7 @@ import { useCart } from '../../context/CartContext';
 import { useAuth } from '../../context/AuthContext';
 import { createOrder } from '../../api/orderApi';
 import formatCurrency from '../../utils/formatCurrency';
+import LocationPicker from '../../components/common/LocationPicker'; // Ní nhớ tạo file này như tui chỉ nha
 
 const { Title, Text } = Typography;
 const { TextArea } = Input;
@@ -35,11 +36,17 @@ const CheckoutPage = () => {
         }
     }, [user, form]);
 
-    // HÀM HIỂN THỊ QR CODE - ĐÃ CẬP NHẬT STK MỚI NHẤT
+    // Hàm để LocationPicker đổ địa chỉ vào Form của Ant Design
+    const handleAddressFound = (detailedAddress) => {
+        form.setFieldsValue({
+            shippingAddress: detailedAddress
+        });
+    };
+
     const showPaymentQR = (order) => {
         const bankId = "MB"; 
-        const accountNo = "89999999251105"; // Đã sửa theo yêu cầu của ní
-        const accountName = "NGUYEN KHANH HUNG"; // Đã sửa tên chuẩn không dấu
+        const accountNo = "89999999251105"; 
+        const accountName = "NGUYEN KHANH HUNG"; 
         const amount = order.totalAmount;
         const description = `THANH TOAN ĐƠN HÀNG ${order.id} CỦA BẠN ♥`;
 
@@ -76,10 +83,8 @@ const CheckoutPage = () => {
         setLoading(true);
         try {
             const response = await createOrder(values);
-            
             if (response.success) {
                 const newOrder = response.data;
-                // CHỖ NÀY QUAN TRỌNG: Gọi hàm hiển thị QR nếu chọn BANK_TRANSFER
                 if (values.paymentMethod === 'BANK_TRANSFER') {
                     showPaymentQR(newOrder); 
                 } else {
@@ -111,16 +116,30 @@ const CheckoutPage = () => {
                                     <Col span={12}><Form.Item name="fullName" label="Họ tên"><Input disabled /></Form.Item></Col>
                                     <Col span={12}><Form.Item name="phone" label="SĐT"><Input disabled /></Form.Item></Col>
                                 </Row>
-                                <Form.Item name="shippingAddress" label="Địa chỉ" rules={[{ required: true }]}>
-                                    <TextArea rows={3} />
+
+                                {/* NÚT ĐỊNH VỊ THẦN THÁNH Ở ĐÂY NÈ NÍ */}
+                                <div style={{ marginBottom: 8 }}>
+                                    <Text type="secondary">Giao tới đâu để đại ca Hùng ship cho nhanh nè?</Text>
+                                    <div style={{ marginTop: 8 }}>
+                                        <LocationPicker onAddressFound={handleAddressFound} />
+                                    </div>
+                                </div>
+
+                                <Form.Item 
+                                    name="shippingAddress" 
+                                    label="Địa chỉ chi tiết" 
+                                    rules={[{ required: true, message: 'Vui lòng nhập hoặc chọn địa chỉ giao hàng!' }]}
+                                >
+                                    <TextArea rows={3} placeholder="Số nhà, tên đường, phường/xã..." />
                                 </Form.Item>
+
                                 <Form.Item name="paymentMethod" label="Phương thức thanh toán" initialValue="COD">
                                     <Radio.Group style={{ width: '100%' }}>
                                         <Radio.Button value="COD" style={{ width: '50%', textAlign: 'center' }}>COD</Radio.Button>
                                         <Radio.Button value="BANK_TRANSFER" style={{ width: '50%', textAlign: 'center' }}>Chuyển khoản QR</Radio.Button>
                                     </Radio.Group>
                                 </Form.Item>
-                                <Button type="primary" htmlType="submit" size="large" block>
+                                <Button type="primary" htmlType="submit" size="large" block style={{ background: '#0B3D91', height: '50px' }}>
                                     {paymentMethod === 'BANK_TRANSFER' ? 'XÁC NHẬN & QUÉT MÃ QR' : 'ĐẶT HÀNG NGAY'}
                                 </Button>
                             </Form>
