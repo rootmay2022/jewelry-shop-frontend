@@ -1,7 +1,5 @@
-// src/pages/order/CheckoutPage.jsx
 import React, { useState, useEffect } from 'react';
-// CẬP NHẬT: Import 'App' và xóa 'message'
-import { Row, Col, Card, Form, Input, Radio, Button, Typography, Spin, App } from 'antd';
+import { Row, Col, Card, Form, Input, Radio, Button, Typography, Spin, App, Modal } from 'antd';
 import { useNavigate } from 'react-router-dom';
 import { useCart } from '../../context/CartContext';
 import { useAuth } from '../../context/AuthContext';
@@ -17,115 +15,168 @@ const CheckoutPage = () => {
     const [loading, setLoading] = useState(false);
     const navigate = useNavigate();
     const [form] = Form.useForm();
-    const { message } = App.useApp(); // CẬP NHẬT: Lấy message từ hook
+    const { message } = App.useApp();
+    
+    // Theo dõi phương thức thanh toán để đổi chữ trên nút bấm
+    const paymentMethod = Form.useWatch('paymentMethod', form);
 
-    // Sửa lỗi 1: Dùng ||
-    if (!cart || cart.items.length === 0) {
-        // Chuyển hướng nên thực hiện trong useEffect, nhưng tạm chấp nhận
-        navigate('/cart');
-        return null;
-    }
+    useEffect(() => {
+        if (!cart || cart.items.length === 0) {
+            navigate('/cart');
+        }
+    }, [cart, navigate]);
 
-    // Sửa lỗi 3 (Logic): Xử lý giá trị mặc định cho form khi user thay đổi
     useEffect(() => {
         if (user) {
-            form.resetFields(); // Reset và áp dụng initialValues mới
+            form.setFieldsValue({
+                fullName: user.fullName,
+                phone: user.phone,
+                shippingAddress: user.address,
+            });
         }
     }, [user, form]);
 
+    // HÀM HIỂN THỊ QR CODE ĐỘNG - Cập nhật STK mới của ní
+    const showPaymentQR = (order) => {
+        const bankId = "MB"; // Ngân hàng Quân Đội
+        const accountNo = "988888888251105"; // SỐ TÀI KHOẢN MỚI CỦA NÍ
+        const accountName = "TRAN KHANH HUNG"; 
+        const amount = order.totalAmount;
+        const description = `THANH TOAN DH ${order.id}`;
+
+        // Link VietQR chuẩn
+        const qrUrl = `https://img.vietqr.io/image/${bankId}-${accountNo}-compact2.png?amount=${amount}&addInfo=${encodeURIComponent(description)}&accountName=${encodeURIComponent(accountName)}`;
+
+        Modal.info({
+            title: 'QUÉT MÃ THANH TOÁN MBBANK',
+            width: 450,
+            centered: true,
+            maskClosable: false,
+            content: (
+                <div style={{ textAlign: 'center', paddingTop: '10px' }}>
+                    <p>Đơn hàng <b>#{order.id}</b></p>
+                    <div style={{ background: '#f5f5f5', padding: '15px', borderRadius: '8px' }}>
+                        <img src={qrUrl} alt="QR Code" style={{ width: '100%', maxWidth: '250px' }} />
+                    </div>
+                    <div style={{ marginTop: '15px', textAlign: 'left' }}>
+                        <p>Chủ TK: <b>{accountName}</b></p>
+                        <p>Số tiền: <b style={{ color: '#0B3D91' }}>{formatCurrency(amount)}</b></p>
+                        <p>Nội dung: <b style={{ color: '#d4380d' }}>{description}</b></p>
+                    </div>
+                    <Text type="secondary">Vui lòng không tắt cửa sổ này cho đến khi bạn chuyển khoản xong.</Text>
+                </div>
+            ),
+            onOk: async () => {
+                await clearCart();
+                navigate(`/order-success/${order.id}`);
+            },
+            okText: 'Tôi đã chuyển khoản thành công',
+        });
+    };
 
     const handlePlaceOrder = async (values) => {
         setLoading(true);
         try {
-            // CẬP NHẬT: Chỉ gửi 2 trường mà OrderRequest.java yêu cầu
-            const orderData = {
-                shippingAddress: values.shippingAddress,
-                paymentMethod: values.paymentMethod
-            };
+            const response = await createOrder(values);
             
-            const response = await createOrder(orderData);
             if (response.success) {
-                message.success('Đặt hàng thành công!');
-                await clearCart(); // Xóa giỏ hàng sau khi đặt hàng
-                navigate(`/order-success/${response.data.id}`);
+                const newOrder = response.data;
+                if (values.paymentMethod === 'BANK_TRANSFER') {
+                    showPaymentQR(newOrder);
+                } else {
+                    message.success('Đặt hàng thành công!');
+                    await clearCart();
+                    navigate(`/order-success/${newOrder.id}`);
+                }
             } else {
-                // Sửa lỗi 1: Dùng ||
                 message.error(response.message || 'Đặt hàng thất bại.');
             }
         } catch (error) {
-            // Sửa lỗi 1: Dùng ||
             message.error(error.response?.data?.message || 'Đã xảy ra lỗi khi đặt hàng.');
         } finally {
             setLoading(false);
         }
     };
 
-    // Sửa lỗi 3 (Logic): Đặt initialValues tại đây
-    // Các trường user?.fullName và user?.phone sẽ hoạt động sau khi bạn đăng nhập lại
-    const initialValues = {
-        shippingAddress: user?.address || '',
-        fullName: user?.fullName || '',
-        phone: user?.phone || '',
-        paymentMethod: 'COD', // Mặc định là COD
-    };
+    if (!cart || cart.items.length === 0) return null;
 
     return (
-        <Spin spinning={loading} style={{ padding: '24px' }}>
-            <Title level={2}>Thanh Toán</Title>
-            <Row gutter={24}>
-                <Col xs={24} md={14}>
-                    <Card title="Thông tin giao hàng">
-                        {/* Sửa lỗi 3: Xóa setFieldsValue và dùng initialValues trên Form */}
-                        <Form form={form} layout="vertical" onFinish={handlePlaceOrder} initialValues={initialValues}>
-                            {/* Sửa lỗi 2: Thêm name="fullName" và bỏ initialValue */}
-                            <Form.Item name="fullName" label="Họ tên người nhận">
-                                <Input readOnly />
-                            </Form.Item>
-                             {/* Sửa lỗi 2: Thêm name="phone" và bỏ initialValue */}
-                            <Form.Item name="phone" label="Số điện thoại">
-                                <Input readOnly />
-                            </Form.Item>
-                            <Form.Item
-                                name="shippingAddress"
-                                label="Địa chỉ giao hàng"
-                                rules={[{ required: true, message: 'Vui lòng nhập địa chỉ giao hàng!' }]}
+        <Spin spinning={loading} tip="Đang xử lý đơn hàng...">
+            <div style={{ padding: '24px', maxWidth: '1200px', margin: '0 auto' }}>
+                <Title level={2}>Thanh Toán</Title>
+                <Row gutter={24}>
+                    <Col xs={24} md={14}>
+                        <Card title="Thông tin giao hàng" variant="outlined">
+                            <Form 
+                                form={form} 
+                                layout="vertical" 
+                                onFinish={handlePlaceOrder} 
+                                initialValues={{ paymentMethod: 'COD' }}
                             >
-                                <TextArea rows={4} />
-                            </Form.Item>
-                            <Form.Item
-                                name="paymentMethod"
-                                label="Phương thức thanh toán"
-                                rules={[{ required: true, message: 'Vui lòng chọn phương thức thanh toán!' }]}
-                            >
-                                <Radio.Group>
-                                    <Radio value="COD">Thanh toán khi nhận hàng (COD)</Radio>
-                                    <Radio value="BANK_TRANSFER">Chuyển khoản ngân hàng</Radio>
-                                </Radio.Group>
-                            </Form.Item>
-                            <Form.Item>
-                                <Button type="primary" htmlType="submit" size="large" block>
-                                    Đặt Hàng
-                                </Button>
-                            </Form.Item>
-                        </Form>
-                    </Card>
-                </Col>
-                <Col xs={24} md={10}>
-                    <Card title="Tóm tắt đơn hàng">
-                        {cart.items.map(item => (
-                            <div key={item.id} style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '12px' }}>
-                                <Text>{item.productName} x {item.quantity}</Text>
-                                <Text>{formatCurrency(item.subtotal)}</Text>
+                                <Row gutter={16}>
+                                    <Col span={12}>
+                                        <Form.Item name="fullName" label="Họ tên người nhận">
+                                            <Input readOnly disabled />
+                                        </Form.Item>
+                                    </Col>
+                                    <Col span={12}>
+                                        <Form.Item name="phone" label="Số điện thoại">
+                                            <Input readOnly disabled />
+                                        </Form.Item>
+                                    </Col>
+                                </Row>
+
+                                <Form.Item
+                                    name="shippingAddress"
+                                    label="Địa chỉ giao hàng chi tiết"
+                                    rules={[{ required: true, message: 'Vui lòng nhập địa chỉ giao hàng!' }]}
+                                >
+                                    <TextArea rows={3} placeholder="Ví dụ: Số 123, Đường ABC, Quận XYZ..." />
+                                </Form.Item>
+
+                                <Form.Item
+                                    name="paymentMethod"
+                                    label="Phương thức thanh toán"
+                                    rules={[{ required: true }]}
+                                >
+                                    <Radio.Group style={{ width: '100%' }}>
+                                        <Radio.Button value="COD" style={{ width: '50%', textAlign: 'center' }}>
+                                            Thanh toán COD
+                                        </Radio.Button>
+                                        <Radio.Button value="BANK_TRANSFER" style={{ width: '50%', textAlign: 'center' }}>
+                                            Chuyển khoản QR
+                                        </Radio.Button>
+                                    </Radio.Group>
+                                </Form.Item>
+
+                                <Form.Item style={{ marginTop: '24px' }}>
+                                    <Button type="primary" htmlType="submit" size="large" block height={50}>
+                                        {paymentMethod === 'BANK_TRANSFER' ? 'THANH TOÁN QUA QR' : 'XÁC NHẬN ĐẶT HÀNG'}
+                                    </Button>
+                                </Form.Item>
+                            </Form>
+                        </Card>
+                    </Col>
+
+                    <Col xs={24} md={10}>
+                        <Card title="Tóm tắt đơn hàng" variant="outlined">
+                            {cart.items.map(item => (
+                                <div key={item.id} style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '12px' }}>
+                                    <Text>{item.productName} <Text type="secondary">x{item.quantity}</Text></Text>
+                                    <Text strong>{formatCurrency(item.subtotal)}</Text>
+                                </div>
+                            ))}
+                            <hr style={{ border: '0.5px solid #f0f0f0', margin: '16px 0' }} />
+                            <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                                <Title level={4}>Tổng thanh toán</Title>
+                                <Title level={4} style={{ color: '#0B3D91', margin: 0 }}>
+                                    {formatCurrency(cart.totalAmount)}
+                                </Title>
                             </div>
-                        ))}
-                        <hr />
-                        <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '12px' }}>
-                            <Title level={4}>Tổng cộng</Title>
-                            <Title level={4} style={{ color: '#0B3D91' }}>{formatCurrency(cart.totalAmount)}</Title>
-                        </div>
-                    </Card>
-                </Col>
-            </Row>
+                        </Card>
+                    </Col>
+                </Row>
+            </div>
         </Spin>
     );
 };
