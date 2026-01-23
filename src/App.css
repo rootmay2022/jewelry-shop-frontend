@@ -1,252 +1,71 @@
-#root {
-  max-width: 1280px;
-  margin: 0 auto;
-  padding: 2rem;
-  text-align: center;
-  /* Thêm style xa xỉ */
-  font-family: 'Cormorant Garamond', 'Times New Roman', serif;
-  background: linear-gradient(135deg, #0a0a0a 0%, #1a1a1a 100%);
-  min-height: 100vh;
-  color: #f5f5f5;
-  position: relative;
+/* Điều chỉnh vị trí con chatbot và các nút liên hệ */
+:root {
+  --primary-gold: #d4af37;
+  --dark-bg: #1a1a1a;
 }
 
-#root::before {
-  content: '';
+/* Đảm bảo chatbot không đè lên các nút quan trọng ở góc dưới */
+#chatbase-bubble-button {
+  bottom: 100px !important; /* Đẩy chatbot lên cao để chừa chỗ cho nút gọi */
+  right: 20px !important;
+  transition: all 0.3s ease;
+}
+
+/* Nút gọi điện thoại (Phone Button) */
+.phone-contact {
   position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: 
-    radial-gradient(circle at 20% 80%, rgba(212, 175, 55, 0.05) 0%, transparent 50%),
-    radial-gradient(circle at 80% 20%, rgba(212, 175, 55, 0.05) 0%, transparent 50%);
-  pointer-events: none;
-  z-index: 0;
-}
-
-/* Logo animation giữ nguyên nhưng thêm hiệu ứng vàng */
-.logo {
-  height: 6em;
-  padding: 1.5em;
-  will-change: filter;
-  transition: filter 300ms;
-  filter: drop-shadow(0 0 1em rgba(212, 175, 55, 0.3));
-}
-
-.logo:hover {
-  filter: drop-shadow(0 0 2em #d4af37aa); /* Đổi thành màu vàng */
-}
-
-.logo.react:hover {
-  filter: drop-shadow(0 0 2em #d4af37aa); /* Đổi thành màu vàng */
-}
-
-@keyframes logo-spin {
-  from {
-    transform: rotate(0deg);
-  }
-  to {
-    transform: rotate(360deg);
-  }
-}
-
-@media (prefers-reduced-motion: no-preference) {
-  a:nth-of-type(2) .logo {
-    animation: logo-spin infinite 20s linear;
-  }
-}
-
-/* Card style xa xỉ */
-.card {
-  padding: 2em;
-  background: rgba(26, 26, 26, 0.8);
-  border: 1px solid rgba(212, 175, 55, 0.1);
-  border-radius: 0;
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-  position: relative;
-  overflow: hidden;
-  backdrop-filter: blur(10px);
-}
-
-.card::before {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  height: 1px;
-  background: linear-gradient(90deg, transparent, #d4af37, transparent);
-}
-
-.card:hover {
-  border-color: rgba(212, 175, 55, 0.3);
-  transform: translateY(-5px);
-  box-shadow: 
-    0 20px 40px rgba(0, 0, 0, 0.3),
-    0 0 30px rgba(212, 175, 55, 0.1);
-}
-
-.read-the-docs {
-  color: #d4af37; /* Đổi thành màu vàng */
-  font-size: 1.1em;
-  letter-spacing: 1px;
-}
-
-/* Thêm style cho các element chung */
-h1, h2, h3, h4, h5, h6 {
-  font-family: 'Playfair Display', serif;
-  color: #d4af37;
-  text-shadow: 0 0 10px rgba(212, 175, 55, 0.3);
-}
-
-button {
-  background: linear-gradient(135deg, #d4af37, #b8941f);
-  color: #0a0a0a;
-  border: none;
-  padding: 0.8em 1.8em;
-  font-family: 'Cormorant Garamond', serif;
-  font-weight: 600;
-  font-size: 1.1em;
-  letter-spacing: 1px;
+  bottom: 20px;
+  right: 20px;
+  background-color: #25d366; /* Màu xanh lá truyền thống */
+  color: white;
+  width: 50px;
+  height: 50px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 24px;
+  box-shadow: 0 4px 10px rgba(0,0,0,0.3);
+  z-index: 9999;
   cursor: pointer;
-  transition: all 0.3s ease;
-  border: 1px solid rgba(212, 175, 55, 0.3);
-  position: relative;
-  overflow: hidden;
 }
 
-button:hover {
-  background: linear-gradient(135deg, #b8941f, #d4af37);
-  transform: translateY(-2px);
-  box-shadow: 
-    0 10px 20px rgba(212, 175, 55, 0.2),
-    0 0 20px rgba(212, 175, 55, 0.1);
+/* Hiệu ứng rung cho nút gọi để thu hút khách */
+@keyframes shake {
+  0% { transform: rotate(0deg); }
+  25% { transform: rotate(5deg); }
+  50% { transform: rotate(-5deg); }
+  75% { transform: rotate(5deg); }
+  100% { transform: rotate(0deg); }
 }
 
-button::after {
-  content: '';
-  position: absolute;
-  top: -50%;
-  left: -60%;
-  width: 20%;
-  height: 200%;
-  background: rgba(255, 255, 255, 0.3);
-  transform: rotate(30deg);
-  transition: all 0.5s ease;
+.phone-contact:hover {
+  animation: shake 0.5s infinite;
+  background-color: #128c7e;
 }
 
-button:hover::after {
-  left: 120%;
-}
-
-/* Style cho input và form elements */
-input, select, textarea {
-  background: rgba(255, 255, 255, 0.05);
-  border: 1px solid rgba(212, 175, 55, 0.2);
-  color: #f5f5f5;
-  padding: 0.8em;
-  font-family: 'Cormorant Garamond', serif;
-  font-size: 1.1em;
-  transition: all 0.3s ease;
-}
-
-input:focus, select:focus, textarea:focus {
-  outline: none;
-  border-color: #d4af37;
-  box-shadow: 0 0 10px rgba(212, 175, 55, 0.2);
-}
-
-/* Style cho table */
-table {
-  border-collapse: collapse;
-  width: 100%;
-  background: rgba(26, 26, 26, 0.8);
-  border: 1px solid rgba(212, 175, 55, 0.1);
-}
-
-th {
-  background: rgba(212, 175, 55, 0.1);
-  color: #d4af37;
-  padding: 1em;
-  font-family: 'Playfair Display', serif;
-  border-bottom: 2px solid #d4af37;
-}
-
-td {
-  padding: 1em;
-  border-bottom: 1px solid rgba(212, 175, 55, 0.1);
-  transition: background 0.3s ease;
-}
-
-tr:hover td {
-  background: rgba(212, 175, 55, 0.05);
-}
-
-/* Navigation style */
-nav {
-  background: rgba(10, 10, 10, 0.9);
-  border-bottom: 1px solid rgba(212, 175, 55, 0.2);
-  padding: 1em 0;
-  backdrop-filter: blur(10px);
-}
-
-nav a {
-  color: #f5f5f5;
-  text-decoration: none;
-  margin: 0 1.5em;
-  font-size: 1.1em;
-  letter-spacing: 1px;
-  position: relative;
-  transition: color 0.3s ease;
-}
-
-nav a:hover {
-  color: #d4af37;
-}
-
-nav a::after {
-  content: '';
-  position: absolute;
-  bottom: -5px;
-  left: 0;
-  width: 0;
-  height: 1px;
-  background: #d4af37;
-  transition: width 0.3s ease;
-}
-
-nav a:hover::after {
-  width: 100%;
-}
-
-/* Scrollbar custom */
+/* Tùy chỉnh thanh cuộn cho sang trọng kiểu Luxury */
 ::-webkit-scrollbar {
-  width: 10px;
+  width: 8px;
 }
 
 ::-webkit-scrollbar-track {
-  background: #1a1a1a;
+  background: var(--dark-bg);
 }
 
 ::-webkit-scrollbar-thumb {
-  background: linear-gradient(180deg, #d4af37, #b8941f);
-  border-radius: 5px;
+  background: var(--primary-gold);
+  border-radius: 10px;
 }
 
-::-webkit-scrollbar-thumb:hover {
-  background: linear-gradient(180deg, #b8941f, #d4af37);
+/* Style cho các thẻ Card sản phẩm */
+.ant-card {
+  border-radius: 12px !important;
+  overflow: hidden;
+  transition: transform 0.3s ease !important;
 }
 
-/* Badge/Label xa xỉ */
-.luxury-badge {
-  background: linear-gradient(135deg, #d4af37, #b8941f);
-  color: #0a0a0a;
-  padding: 0.3em 0.8em;
-  font-size: 0.8em;
-  font-weight: bold;
-  letter-spacing: 1px;
-  display: inline-block;
-  margin: 0.5em;
-  border: 1px solid rgba(212, 175, 55, 0.3);
+.ant-card:hover {
+  transform: translateY(-5px);
+  border-color: var(--primary-gold) !important;
 }
