@@ -12,7 +12,7 @@ import {
     Divider, 
     Tag, 
     Space 
-} from 'antd'; // Tui đã gom hết vào một dòng cho ní rồi đây
+} from 'antd'; 
 import { ShoppingCartOutlined } from '@ant-design/icons';
 import { getProductById } from '../../api/productApi';
 import { useCart } from '../../context/CartContext';
@@ -60,7 +60,11 @@ const ProductDetailPage = () => {
     };
 
     if (loading) {
-        return <div style={{ textAlign: 'center', padding: '100px 0' }}><Spin size="large" /></div>;
+        return (
+            <div style={{ textAlign: 'center', padding: '100px 0' }}>
+                <Spin size="large" tip="Đang tải dữ liệu..." />
+            </div>
+        );
     }
 
     if (!product) {
@@ -70,26 +74,26 @@ const ProductDetailPage = () => {
     return (
         <div style={{ padding: '24px', maxWidth: '1200px', margin: '0 auto' }}>
             <Row gutter={[32, 32]} align="middle">
-                {/* ẢNH SẢN PHẨM */}
+                {/* PHẦN HÌNH ẢNH */}
                 <Col xs={24} md={12} style={{ textAlign: 'center' }}>
                     <div style={{ 
                         background: '#fff', 
                         padding: '20px', 
                         borderRadius: '15px',
-                        boxShadow: '0 4px 20px rgba(0,0,0,0.05)' 
+                        boxShadow: '0 4px 20px rgba(0,0,0,0.08)' 
                     }}>
                         <Image
                             width="100%"
-                            style={{ maxWidth: '400px', objectFit: 'contain', borderRadius: '8px' }}
+                            style={{ maxHeight: '500px', objectFit: 'contain', borderRadius: '8px' }}
                             src={product.imageUrl || 'https://via.placeholder.com/500'}
                             alt={product.name}
                         />
                     </div>
                 </Col>
 
-                {/* THÔNG TIN SẢN PHẨM */}
+                {/* PHẦN THÔNG TIN */}
                 <Col xs={24} md={12}>
-                    {/* Tag danh mục */}
+                    {/* Hiển thị Category mượt mà */}
                     {product.category && (
                         <Tag color="gold" style={{ marginBottom: '12px', fontSize: '14px', padding: '2px 12px' }}>
                             {product.category.name} 
@@ -108,8 +112,8 @@ const ProductDetailPage = () => {
                         {product.description}
                     </Paragraph>
 
-                    <div style={{ background: '#f5f5f5', padding: '16px', borderRadius: '8px', marginBottom: '24px' }}>
-                        <Paragraph><Text strong>Chất liệu:</Text> {product.material || 'Cao cấp'}</Paragraph>
+                    <div style={{ background: '#f9f9f9', padding: '16px', borderRadius: '8px', marginBottom: '24px', border: '1px solid #eee' }}>
+                        <Paragraph><Text strong>Chất liệu:</Text> {product.material || 'Hợp kim cao cấp'}</Paragraph>
                         <Paragraph style={{ marginBottom: 0 }}>
                             <Text strong>Tình trạng:</Text> {product.stockQuantity > 0 ? (
                                 <Text type="success"> Còn hàng ({product.stockQuantity} sản phẩm)</Text>
@@ -119,6 +123,7 @@ const ProductDetailPage = () => {
                         </Paragraph>
                     </div>
 
+                    {/* Dùng Space để căn chỉnh nút bấm và InputNumber */}
                     <Space size="large" align="center" style={{ width: '100%', flexWrap: 'wrap' }}>
                         <div>
                             <Text strong style={{ marginRight: '12px' }}>Số lượng:</Text>
@@ -129,6 +134,7 @@ const ProductDetailPage = () => {
                                 onChange={setQuantity} 
                                 disabled={product.stockQuantity === 0}
                                 size="large"
+                                style={{ width: '80px' }}
                             />
                         </div>
                         
@@ -142,6 +148,7 @@ const ProductDetailPage = () => {
                                 fontSize: '16px', 
                                 fontWeight: 'bold',
                                 backgroundColor: '#0B3D91',
+                                borderRadius: '6px',
                                 border: 'none'
                             }}
                             onClick={handleAddToCart}
@@ -152,8 +159,7 @@ const ProductDetailPage = () => {
                         </Button>
                     </Space>
                     
-                    {/* Chống bị đè bởi các nút nổi như Chat/Messenger */}
-                    <div style={{ height: '60px' }}></div>
+                    <div style={{ height: '80px' }}></div>
                 </Col>
             </Row>
         </div>
