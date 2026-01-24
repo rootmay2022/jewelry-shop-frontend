@@ -17,18 +17,28 @@ const Login = () => {
     setLoading(true);
     try {
       const response = await login(values);
-      if (response.success) {
+      
+      // Backend của ní trả về { success: true, data: { token: "...", user: { role: "..." } } }
+      if (response && response.success) {
         message.success('Đăng nhập thành công!');
-        if (response.data.role === 'ADMIN') {
-            navigate('/admin');
+        
+        // Kiểm tra role nằm sâu trong response.data
+        // Tui kiểm tra cả 2 trường hợp response.data.role hoặc response.data.user.role cho chắc
+        const userRole = response.data?.role || response.data?.user?.role;
+
+        if (userRole === 'ADMIN') {
+          navigate('/admin');
         } else {
-            navigate(from, { replace: true });
+          // Quay lại trang trước đó hoặc về trang chủ
+          navigate(from, { replace: true });
         }
       } else {
-        message.error(response.message || 'Tên đăng nhập hoặc mật khẩu không đúng.');
+        message.error(response?.message || 'Tên đăng nhập hoặc mật khẩu không đúng.');
       }
     } catch (error) {
-      message.error(error.response?.data?.message || 'Đã xảy ra lỗi. Vui lòng thử lại.');
+      // Bắt message lỗi từ Backend trả về (như "Bad credentials")
+      const errorMsg = error.response?.data?.message || error.message || 'Đã xảy ra lỗi. Vui lòng thử lại.';
+      message.error(errorMsg);
     } finally {
       setLoading(false);
     }
@@ -40,7 +50,7 @@ const Login = () => {
       justifyContent: 'center', 
       alignItems: 'center', 
       minHeight: '85vh',
-      padding: '10px', // Giảm lề ngoài để card nở rộng ra
+      padding: '10px',
       backgroundColor: '#f5f5f5'
     }}>
       <Card 
@@ -51,7 +61,7 @@ const Login = () => {
           boxShadow: '0 8px 24px rgba(0,0,0,0.08)',
           border: 'none' 
         }}
-        bodyStyle={{ padding: '30px 16px' }} // Giảm padding trong để Input dài ra
+        bodyStyle={{ padding: '30px 16px' }}
       >
         <Title level={2} style={{ textAlign: 'center', marginBottom: '30px', color: '#0B3D91' }}>Đăng Nhập</Title>
         <Form name="login" onFinish={onFinish} layout="vertical" requiredMark={false}>
@@ -86,7 +96,6 @@ const Login = () => {
           <div style={{ textAlign: 'center', marginTop: '16px' }}>
             Chưa có tài khoản? <Link to="/register" style={{ fontWeight: '600', color: '#0B3D91' }}>Đăng ký ngay!</Link>
           </div>
-          {/* Né nút Messenger/Zalo trên mobile */}
           <div style={{ height: '80px' }}></div>
         </Form>
       </Card>

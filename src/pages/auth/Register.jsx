@@ -13,35 +13,36 @@ const Register = () => {
   const [form] = Form.useForm();
 
   const onFinish = async (values) => {
-  setLoading(true);
-  try {
-    // 1. Tách confirmPassword ra, chỉ lấy những cái Backend cần
-    const { confirmPassword, ...dataToSend } = values;
+    setLoading(true);
+    try {
+      // 1. Tách confirmPassword ra, chỉ lấy những cái Backend cần (username, email, password, fullName, phone, address)
+      const { confirmPassword, ...dataToSend } = values;
 
-    // 2. Gửi dataToSend (đã sạch sẽ) lên API
-    const response = await register(dataToSend);
-    
-    if (response.success) {
-      message.success('Đăng ký thành công! Đang chuyển hướng...');
-      navigate('/login');
-    } else {
-      message.error(response.message || 'Đăng ký thất bại.');
+      // 2. Gửi dataToSend (đã sạch sẽ) lên API
+      const response = await register(dataToSend);
+      
+      if (response && response.success) {
+        message.success('Đăng ký thành công! Đang chuyển hướng...');
+        navigate('/login');
+      } else {
+        // Nếu API trả về success: false kèm message
+        message.error(response?.message || 'Đăng ký thất bại.');
+      }
+    } catch (error) {
+      // Lấy message lỗi chi tiết từ backend trả về để ní biết sai ở đâu (ví dụ: trùng email)
+      const errorMsg = error.message || (error.response?.data?.message) || 'Đã xảy ra lỗi. Vui lòng thử lại.';
+      message.error(errorMsg);
+    } finally {
+      setLoading(false);
     }
-  } catch (error) {
-    // Sửa chỗ này để bắt message từ backend trả về nếu có
-    const errorMsg = error.response?.data?.message || error.message || 'Đã xảy ra lỗi.';
-    message.error(errorMsg);
-  } finally {
-    setLoading(false);
-  }
-};
+  };
 
   return (
     <div style={{ 
       display: 'flex', 
       justifyContent: 'center', 
       alignItems: 'center', 
-      padding: '20px 10px', // Ép lề mỏng để Input nở ra hết chiều ngang
+      padding: '20px 10px', 
       minHeight: '100vh',
       backgroundColor: '#f5f5f5'
     }}>
@@ -53,7 +54,7 @@ const Register = () => {
           boxShadow: '0 8px 24px rgba(0,0,0,0.08)',
           border: 'none' 
         }}
-        bodyStyle={{ padding: '24px 12px' }} // Tối ưu diện tích cho các ô Input
+        bodyStyle={{ padding: '24px 12px' }}
       >
         <Title level={2} style={{ textAlign: 'center', marginBottom: '24px', color: '#0B3D91' }}>Đăng Ký</Title>
         <Form
@@ -130,7 +131,6 @@ const Register = () => {
           <div style={{ textAlign: 'center' }}>
             Đã có tài khoản? <Link to="/login" style={{ fontWeight: '600', color: '#0B3D91' }}>Đăng nhập</Link>
           </div>
-          {/* Chống đè nút Messenger cực mạnh */}
           <div style={{ height: '100px' }}></div>
         </Form>
       </Card>
