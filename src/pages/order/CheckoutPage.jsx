@@ -5,7 +5,7 @@ import { useCart } from '../../context/CartContext';
 import { useAuth } from '../../context/AuthContext';
 import { createOrder } from '../../api/orderApi';
 import formatCurrency from '../../utils/formatCurrency';
-import LocationPicker from '../../components/cart/LocationPicker'; // Ní nhớ tạo file này như tui chỉ nha
+import LocationPicker from '../../components/cart/LocationPicker';
 
 const { Title, Text } = Typography;
 const { TextArea } = Input;
@@ -14,17 +14,19 @@ const CheckoutPage = () => {
     const { cart, clearCart } = useCart();
     const { user } = useAuth();
     const [loading, setLoading] = useState(false);
+    const [orderPlaced, setOrderPlaced] = useState(false); // Thêm cờ này để chặn bị đá về /cart
     const navigate = useNavigate();
     const [form] = Form.useForm();
     const { message } = App.useApp();
     
     const paymentMethod = Form.useWatch('paymentMethod', form);
 
+    // SỬA TẠI ĐÂY: Chỉ điều hướng nếu chưa đặt hàng thành công
     useEffect(() => {
-        if (!cart || cart.items.length === 0) {
+        if (!orderPlaced && (!cart || cart.items.length === 0)) {
             navigate('/cart');
         }
-    }, [cart, navigate]);
+    }, [cart, navigate, orderPlaced]);
 
     useEffect(() => {
         if (user) {
@@ -36,11 +38,8 @@ const CheckoutPage = () => {
         }
     }, [user, form]);
 
-    // Hàm để LocationPicker đổ địa chỉ vào Form của Ant Design
     const handleAddressFound = (detailedAddress) => {
-        form.setFieldsValue({
-            shippingAddress: detailedAddress
-        });
+        form.setFieldsValue({ shippingAddress: detailedAddress });
     };
 
     const showPaymentQR = (order) => {
@@ -48,7 +47,7 @@ const CheckoutPage = () => {
         const accountNo = "89999999251105"; 
         const accountName = "NGUYEN KHANH HUNG"; 
         const amount = order.totalAmount;
-        const description = `THANH TOAN ĐƠN HÀNG ${order.id} CỦA BẠN ♥`;
+        const description = `THANH TOAN DON HANG ${order.id}`; // Bỏ ký tự đặc biệt cho chắc
 
         const qrUrl = `https://img.vietqr.io/image/${bankId}-${accountNo}-compact2.png?amount=${amount}&addInfo=${encodeURIComponent(description)}&accountName=${encodeURIComponent(accountName)}`;
 
@@ -68,10 +67,10 @@ const CheckoutPage = () => {
                         <p>Số tiền: <b style={{ color: '#0B3D91' }}>{formatCurrency(amount)}</b></p>
                         <p>Nội dung: <b style={{ color: '#d4380d' }}>{description}</b></p>
                     </div>
-                    <Text type="secondary">Vui lòng quét mã và chuyển đúng số tiền trên.</Text>
                 </div>
             ),
             onOk: async () => {
+                // CHỐT HẠ: Xóa giỏ và đi tới trang thành công
                 await clearCart();
                 navigate(`/order-success/${order.id}`);
             },
@@ -84,7 +83,9 @@ const CheckoutPage = () => {
         try {
             const response = await createOrder(values);
             if (response.success) {
+                setOrderPlaced(true); // Đánh dấu đã đặt hàng để không bị useEffect đá ra
                 const newOrder = response.data;
+                
                 if (values.paymentMethod === 'BANK_TRANSFER') {
                     showPaymentQR(newOrder); 
                 } else {
@@ -117,8 +118,7 @@ const CheckoutPage = () => {
                                     <Col span={12}><Form.Item name="phone" label="SĐT"><Input disabled /></Form.Item></Col>
                                 </Row>
 
-                                {/* NÚT ĐỊNH VỊ THẦN THÁNH Ở ĐÂY NÈ NÍ */}
-                                <div style={{ marginBottom: 8 }}>
+                                <div style={{ marginBottom: 16 }}>
                                     <Text type="secondary">Giao tới đâu để đại ca Hùng ship cho nhanh nè?</Text>
                                     <div style={{ marginTop: 8 }}>
                                         <LocationPicker onAddressFound={handleAddressFound} />
@@ -139,12 +139,14 @@ const CheckoutPage = () => {
                                         <Radio.Button value="BANK_TRANSFER" style={{ width: '50%', textAlign: 'center' }}>Chuyển khoản QR</Radio.Button>
                                     </Radio.Group>
                                 </Form.Item>
-                                <Button type="primary" htmlType="submit" size="large" block style={{ background: '#0B3D91', height: '50px' }}>
+                                
+                                <Button type="primary" htmlType="submit" size="large" block style={{ background: '#0B3D91', height: '50px', fontWeight: 'bold' }}>
                                     {paymentMethod === 'BANK_TRANSFER' ? 'XÁC NHẬN & QUÉT MÃ QR' : 'ĐẶT HÀNG NGAY'}
                                 </Button>
                             </Form>
                         </Card>
                     </Col>
+                    
                     <Col xs={24} md={10}>
                         <Card title="Đơn hàng của bạn">
                             {cart.items.map(item => (
@@ -153,7 +155,7 @@ const CheckoutPage = () => {
                                     <Text strong>{formatCurrency(item.subtotal)}</Text>
                                 </div>
                             ))}
-                            <hr style={{ border: '0.5px solid #f0f0f0' }} />
+                            <hr style={{ border: '0.5px solid #f0f0f0', margin: '16px 0' }} />
                             <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                                 <Title level={4}>Tổng cộng</Title>
                                 <Title level={4} style={{ color: '#0B3D91' }}>{formatCurrency(cart.totalAmount)}</Title>
