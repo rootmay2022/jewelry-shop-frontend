@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { Row, Col, Card, Statistic, Spin, message, Typography, Button } from 'antd';
-import { ShoppingCartOutlined, DollarCircleOutlined, FileExcelOutlined } from '@ant-design/icons';
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
+import { Row, Col, Card, Statistic, Spin, message, Typography, Button, Table, Divider } from 'antd';
+import { ShoppingCartOutlined, DollarCircleOutlined, FileExcelOutlined, CheckCircleOutlined } from '@ant-design/icons';
+import { PieChart, Pie, Cell, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import { getDashboardStats } from '../../api/adminApi';
 import formatCurrency from '../../utils/formatCurrency';
 import * as XLSX from 'xlsx'; 
@@ -15,12 +15,12 @@ const Dashboard = () => {
     const [data, setData] = useState({
         totalRevenue: 0,
         successOrders: 0,
-        chartData: [],
-        pieData: []
+        pieData: [],
+        deliveredList: [] // Danh sách đơn đã giao để xuất file chi tiết
     });
 
     useEffect(() => {
-        const fetchAndCalculate = async () => {
+        const fetchStats = async () => {
             setLoading(true);
             try {
                 const response = await getDashboardStats();
@@ -29,143 +29,167 @@ const Dashboard = () => {
                     
                     let totalRev = 0;
                     let successCount = 0;
-                    const dailyMap = {};
                     const statusMap = {};
+                    const deliveredOrders = [];
 
                     rawOrders.forEach(order => {
-                        // 1. CHUẨN HÓA DỮ LIỆU (Snake_case vs CamelCase)
                         const amount = Number(order.total_amount || order.totalAmount || 0);
                         const status = (order.status || '').toUpperCase();
-                        const dateRaw = order.order_date || order.createdAt || order.date;
-                        const dateLabel = dayjs(dateRaw).format('DD/MM');
-
-                        // 2. TÍNH DOANH THU & ĐƠN THÀNH CÔNG (Chỉ tính DELIVERED)
+                        
+                        // 1. Chỉ lấy đơn DELIVERED vào danh sách doanh thu
                         if (status === 'DELIVERED') {
                             totalRev += amount;
                             successCount += 1;
-                            
-                            // Gom nhóm doanh thu theo ngày cho biểu đồ đường
-                            dailyMap[dateLabel] = (dailyMap[dateLabel] || 0) + amount;
+                            deliveredOrders.push({
+                                id: order.id,
+                                date: dayjs(order.order_date || order.createdAt).format('DD/MM/YYYY HH:mm'),
+                                amount: amount,
+                                payment: order.payment_method || 'N/A'
+                            });
                         }
 
-                        // 3. THỐNG KÊ TRẠNG THÁI (Cho biểu đồ tròn)
-                        const statusVN = {
-                            'DELIVERED': 'Thành công',
-                            'PENDING': 'Chờ duyệt',
-                            'CONFIRMED': 'Đã xác nhận',
-                            'SHIPPING': 'Đang giao',
-                            'CANCELLED': 'Đã hủy'
-                        };
-                        const label = statusVN[status] || status;
+                        // 2. Thống kê tất cả trạng thái cho biểu đồ tròn
+                        const label = status === 'DELIVERED' ? 'Thành công' : 
+                                      status === 'CANCELLED' ? 'Đã hủy' : 
+                                      status === 'PENDING' ? 'Chờ duyệt' : status;
                         statusMap[label] = (statusMap[label] || 0) + 1;
                     });
-
-                    // 4. CHUYỂN ĐỔI SANG ĐỊNH DẠNG BIỂU ĐỒ
-                    const chartData = Object.keys(dailyMap).map(date => ({
-                        date,
-                        revenue: dailyMap[date]
-                    })).sort((a, b) => dayjs(a.date, 'DD/MM').unix() - dayjs(b.date, 'DD/MM').unix());
-
-                    const pieData = Object.keys(statusMap).map(name => ({
-                        name,
-                        value: statusMap[name]
-                    }));
 
                     setData({
                         totalRevenue: totalRev,
                         successOrders: successCount,
-                        chartData: chartData.length > 0 ? chartData : [{ date: dayjs().format('DD/MM'), revenue: 0 }],
-                        pieData
+                        pieData: Object.keys(statusMap).map(name => ({ name, value: statusMap[name] })),
+                        deliveredList: deliveredOrders
                     });
                 }
             } catch (error) {
-                message.error('Không thể tính toán dữ liệu thống kê.');
+                message.error('Lỗi tải dữ liệu thống kê.');
             } finally {
                 setLoading(false);
             }
         };
-        fetchAndCalculate();
+        fetchStats();
     }, []);
 
+    // HÀM XUẤT EXCEL CHI TIẾT
     const handleExportExcel = () => {
-        const ws = XLSX.utils.json_to_sheet([{ 
-            "Ngày xuất": dayjs().format('DD/MM/YYYY HH:mm'), 
-            "Tổng doanh thu": data.totalRevenue, 
-            "Tổng đơn thành công": data.successOrders 
-        }]);
+        if (data.deliveredList.length === 0) {
+            return message.warning("Không có dữ liệu doanh thu để xuất!");
+        }
+
+        // Tạo dữ liệu chi tiết cho từng dòng trong Excel
+        const excelData = data.deliveredList.map(item => ({
+            "Mã Đơn Hàng": item.id,
+            "Ngày Hoàn Tất": item.date,
+            "Phương Thức": item.payment,
+            "Số Tiền (VNĐ)": item.amount
+        }));
+
+        // Thêm dòng tổng cộng ở cuối
+        excelData.push({
+            "Mã Đơn Hàng": "TỔNG CỘNG",
+            "Số Tiền (VNĐ)": data.totalRevenue
+        });
+
+        const ws = XLSX.utils.json_to_sheet(excelData);
         const wb = XLSX.utils.book_new();
-        XLSX.utils.book_append_sheet(wb, ws, "Thống Kê");
-        XLSX.writeFile(wb, `Bao_Cao_${dayjs().format('YYYYMMDD')}.xlsx`);
+        XLSX.utils.book_append_sheet(wb, ws, "Báo Cáo Doanh Thu");
+        XLSX.writeFile(wb, `Bao_Cao_Doanh_Thu_${dayjs().format('DDMMYYYY')}.xlsx`);
+        message.success("Đã xuất file báo cáo thành công!");
     };
 
     if (loading) return <Spin size="large" style={{ display: 'block', margin: '100px auto' }} />;
 
     return (
-        <div style={{ padding: '24px', background: '#141414', minHeight: '100vh' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 20 }}>
-                <Title level={2} style={{ color: '#fff', margin: 0 }}>📊 HỆ THỐNG THỐNG KÊ KINH DOANH</Title>
+        <div style={{ padding: '24px', background: '#f0f2f5', minHeight: '100vh' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
+                <Title level={2} style={{ margin: 0 }}>💰 QUẢN LÝ DOANH THU & ĐƠN HÀNG</Title>
                 <Button 
                     type="primary" 
+                    size="large"
                     icon={<FileExcelOutlined />} 
                     onClick={handleExportExcel} 
-                    style={{ backgroundColor: '#1d6f42', borderColor: '#1d6f42' }}
+                    danger
                 >
-                    XUẤT EXCEL
+                    XUẤT CHI TIẾT DOANH THU
                 </Button>
             </div>
 
             <Row gutter={16}>
-                <Col span={12}>
-                    <Card bordered={false} style={{ background: '#1f1f1f', borderRadius: '12px' }}>
+                <Col span={8}>
+                    <Card bordered={false} hoverable>
                         <Statistic 
-                            title={<span style={{color: '#aaa', fontSize: '16px'}}>DOANH THU HOÀN TẤT</span>}
+                            title="TỔNG DOANH THU THỰC"
                             value={data.totalRevenue} 
                             formatter={(v) => formatCurrency(v)}
-                            valueStyle={{ color: '#52c41a', fontSize: '32px', fontWeight: 'bold' }}
+                            valueStyle={{ color: '#cf1322', fontWeight: 'bold' }}
                             prefix={<DollarCircleOutlined />} 
                         />
-                        <Text style={{ color: '#555' }}>Tổng tiền từ các đơn hàng có trạng thái "DELIVERED"</Text>
                     </Card>
                 </Col>
-                <Col span={12}>
-                    <Card bordered={false} style={{ background: '#1f1f1f', borderRadius: '12px' }}>
+                <Col span={8}>
+                    <Card bordered={false} hoverable>
                         <Statistic 
-                            title={<span style={{color: '#aaa', fontSize: '16px'}}>ĐƠN HÀNG THÀNH CÔNG</span>}
+                            title="ĐƠN GIAO THÀNH CÔNG"
                             value={data.successOrders} 
-                            valueStyle={{ color: '#1890ff', fontSize: '32px', fontWeight: 'bold' }}
+                            valueStyle={{ color: '#3f8600', fontWeight: 'bold' }}
+                            prefix={<CheckCircleOutlined />} 
+                        />
+                    </Card>
+                </Col>
+                <Col span={8}>
+                    <Card bordered={false} hoverable>
+                        <Statistic 
+                            title="TỔNG ĐƠN HÀNG HỆ THỐNG"
+                            value={data.pieData.reduce((a, b) => a + b.value, 0)} 
+                            valueStyle={{ color: '#1890ff', fontWeight: 'bold' }}
                             prefix={<ShoppingCartOutlined />} 
                         />
-                        <Text style={{ color: '#555' }}>Số lượng đơn đã giao thành công cho khách</Text>
                     </Card>
                 </Col>
             </Row>
 
             <Row gutter={16} style={{ marginTop: 24 }}>
-                <Col span={14}>
-                    <Card title={<span style={{color: '#fff'}}>BIỂU ĐỒ DOANH THU THEO NGÀY</span>} bordered={false} style={{ background: '#1f1f1f', borderRadius: '12px' }}>
-                        <ResponsiveContainer width="100%" height={320}>
-                            <LineChart data={data.chartData}>
-                                <CartesianGrid strokeDasharray="3 3" stroke="#333" />
-                                <XAxis dataKey="date" stroke="#888" />
-                                <YAxis stroke="#888" />
-                                <Tooltip contentStyle={{ background: '#222', border: 'none', color: '#fff' }} />
-                                <Legend />
-                                <Line type="monotone" dataKey="revenue" stroke="#52c41a" strokeWidth={4} dot={{ r: 6 }} name="Doanh thu (VNĐ)" />
-                            </LineChart>
-                        </ResponsiveContainer>
+                <Col span={10}>
+                    <Card title="TỶ LỆ TRẠNG THÁI ĐƠN HÀNG" bordered={false} style={{ borderRadius: '8px' }}>
+                        <div style={{ height: 350 }}>
+                            <ResponsiveContainer width="100%" height="100%">
+                                <PieChart>
+                                    <Pie 
+                                        data={data.pieData} 
+                                        dataKey="value" 
+                                        cx="50%" cy="50%" 
+                                        innerRadius={70} outerRadius={100} 
+                                        paddingAngle={5} 
+                                        label
+                                    >
+                                        {data.pieData.map((_, i) => <Cell key={i} fill={COLORS[i % COLORS.length]} />)}
+                                    </Pie>
+                                    <Tooltip />
+                                    <Legend verticalAlign="bottom" />
+                                </PieChart>
+                            </ResponsiveContainer>
+                        </div>
                     </Card>
                 </Col>
-                <Col span={10}>
-                    <Card title={<span style={{color: '#fff'}}>PHÂN TỶ LỆ TRẠNG THÁI</span>} bordered={false} style={{ background: '#1f1f1f', borderRadius: '12px' }}>
-                        <ResponsiveContainer width="100%" height={320}>
-                            <PieChart>
-                                <Pie data={data.pieData} dataKey="value" cx="50%" cy="50%" outerRadius={90} innerRadius={65} paddingAngle={5} label>
-                                    {data.pieData.map((_, i) => <Cell key={i} fill={COLORS[i % COLORS.length]} />)}
-                                </Pie>
-                                <Tooltip />
-                                <Legend verticalAlign="bottom" height={36}/>
-                            </PieChart>
-                        </ResponsiveContainer>
+                
+                <Col span={14}>
+                    <Card title="DANH SÁCH ĐƠN HÀNG TẠO DOANH THU" bordered={false} style={{ borderRadius: '8px' }}>
+                        <Table 
+                            dataSource={data.deliveredList} 
+                            pagination={{ pageSize: 5 }}
+                            rowKey="id"
+                            size="small"
+                            columns={[
+                                { title: 'Mã Đơn', dataIndex: 'id', key: 'id' },
+                                { title: 'Ngày Giao', dataIndex: 'date', key: 'date' },
+                                { 
+                                    title: 'Tiền', 
+                                    dataIndex: 'amount', 
+                                    render: (v) => <Text strong type="danger">{formatCurrency(v)}</Text> 
+                                },
+                            ]}
+                        />
                     </Card>
                 </Col>
             </Row>
