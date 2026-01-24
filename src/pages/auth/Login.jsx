@@ -12,47 +12,44 @@ const Login = () => {
   const location = useLocation();
   const { login } = useAuth();
   
-  // Tránh lỗi nếu location.state bị null
+  // Lấy trang đích người dùng muốn tới, mặc định là trang chủ
   const from = location.state?.from?.pathname || '/';
 
   const onFinish = async (values) => {
     setLoading(true);
     try {
-      // Đảm bảo values chỉ chứa { username, password }
+      // 1. Gọi hàm login từ AuthContext
       const response = await login(values);
       
-      // Kiểm tra phản hồi từ AuthContext/API
       if (response && response.success) {
         message.success('Đăng nhập thành công!');
         
-        // 1. Lấy role chuẩn từ data
-        // Dựa trên AuthContext ní gửi lúc nãy, data trả về là object user
+        // Lấy data user để check role
         const userData = response.data?.user || response.data;
         const userRole = userData?.role;
 
-        // 2. Điều hướng dựa trên Role
-        if (userRole === 'ADMIN') {
-          navigate('/admin');
-        } else {
-          navigate(from, { replace: true });
-        }
+        // 2. MẸO QUAN TRỌNG: Dùng setTimeout để đợi AuthContext cập nhật State hoàn tất
+        // Việc này giúp tránh bị ProtectedRoute "đá" ra do check state quá nhanh
+        setTimeout(() => {
+          if (userRole === 'ADMIN') {
+            navigate('/admin', { replace: true });
+          } else {
+            // Nếu "from" là trang login thì ép về "/", tránh lặp vô hạn
+            const destination = (from === '/login' || from === '/register') ? '/' : from;
+            navigate(destination, { replace: true });
+          }
+        }, 300); // Đợi 300ms là khoảng thời gian "vàng" để state kịp ngấm
+
       } else {
-        // Nếu success === false từ Backend
         message.error(response?.message || 'Tên đăng nhập hoặc mật khẩu không đúng.');
       }
     } catch (error) {
-      // HIỂN THỊ LỖI 400 CHI TIẾT
       console.error("Login Error:", error);
-      
-      // Nếu lỗi 400, thường Backend trả về message trong error.response.data
-      const errorDescription = error.response?.data?.message || error.message || 'Đã xảy ra lỗi.';
-      
-      if (error.response?.status === 400) {
-        message.error("Dữ liệu đăng nhập không hợp lệ (Lỗi 400).");
-      } else {
-        message.error(errorDescription);
-      }
+      const errorDescription = error.response?.data?.message || error.message || 'Đã xảy ra lỗi hệ thống.';
+      message.error(errorDescription);
     } finally {
+      // Chỉ tắt loading ở đây nếu không thành công, 
+      // nếu thành công thì setTimeout ở trên sẽ lo việc chuyển trang
       setLoading(false);
     }
   };
@@ -76,7 +73,9 @@ const Login = () => {
         }}
         bodyStyle={{ padding: '30px 16px' }}
       >
-        <Title level={2} style={{ textAlign: 'center', marginBottom: '30px', color: '#0B3D91' }}>Đăng Nhập</Title>
+        <Title level={2} style={{ textAlign: 'center', marginBottom: '30px', color: '#0B3D91' }}>
+          Đăng Nhập
+        </Title>
         <Form 
           name="login" 
           onFinish={onFinish} 
@@ -129,7 +128,7 @@ const Login = () => {
           <div style={{ textAlign: 'center', marginTop: '16px' }}>
             Chưa có tài khoản? <Link to="/register" style={{ fontWeight: '600', color: '#0B3D91' }}>Đăng ký ngay!</Link>
           </div>
-          <div style={{ height: '80px' }}></div>
+          <div style={{ height: '20px' }}></div> {/* Giảm bớt khoảng trống thừa */}
         </Form>
       </Card>
     </div>

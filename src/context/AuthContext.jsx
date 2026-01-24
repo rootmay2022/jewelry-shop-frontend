@@ -10,28 +10,30 @@ export const AuthProvider = ({ children }) => {
   const [isAdmin, setIsAdmin] = useState(false);
   const [loading, setLoading] = useState(true);
 
+  // 1. Khởi tạo: Check token khi load trang
   useEffect(() => {
-    const token = localStorage.getItem('token');
-    const userData = localStorage.getItem('user');
-    
-    if (token && userData) {
-      try {
-        const parsedUser = JSON.parse(userData);
-        setUser(parsedUser);
-        setIsAuthenticated(true);
-        // Kiểm tra role từ dữ liệu đã lưu
-        setIsAdmin(parsedUser.role === 'ADMIN');
-      } catch (e) {
-        localStorage.clear();
+    const initAuth = () => {
+      const token = localStorage.getItem('token');
+      const userData = localStorage.getItem('user');
+      
+      if (token && userData) {
+        try {
+          const parsedUser = JSON.parse(userData);
+          setUser(parsedUser);
+          setIsAuthenticated(true);
+          setIsAdmin(parsedUser.role === 'ADMIN');
+        } catch (e) {
+          localStorage.clear();
+        }
       }
-    }
-    setLoading(false);
+      setLoading(false); // Xong xuôi mới tắt loading
+    };
+    initAuth();
   }, []);
 
   const saveAuthData = (data) => {
-    // data ở đây là response.data từ Backend: { token: "...", user: { username, role, ... } }
     const token = data.token;
-    const userData = data.user; // Backend trả về user nằm trong object data
+    const userData = data.user;
 
     if (token && userData) {
       localStorage.setItem('token', token);
@@ -44,24 +46,32 @@ export const AuthProvider = ({ children }) => {
   };
 
   const login = async (credentials) => {
+    // Bật loading để các ProtectedRoute đứng yên đợi
+    setLoading(true); 
     try {
       const response = await loginApi(credentials);
-      // Kiểm tra response.success và cấu trúc data
       if (response && response.success && response.data) {
         saveAuthData(response.data);
+        setLoading(false); // Tắt loading sau khi đã set user xong
+        return response;
       }
+      setLoading(false);
       return response;
     } catch (error) {
+      setLoading(false);
       console.error("AuthContext Login Error:", error);
       throw error;
     }
   };
 
   const register = async (userData) => {
+    setLoading(true);
     try {
       const response = await registerApi(userData);
+      setLoading(false);
       return response;
     } catch (error) {
+      setLoading(false);
       console.error("AuthContext Register Error:", error);
       throw error;
     }
@@ -77,7 +87,7 @@ export const AuthProvider = ({ children }) => {
 
   return (
     <AuthContext.Provider value={{ user, isAuthenticated, isAdmin, loading, login, register, logout }}>
-      {!loading && children}
+      {children} 
     </AuthContext.Provider>
   );
 };
