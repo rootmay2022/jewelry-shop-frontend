@@ -7,7 +7,6 @@ import formatCurrency from '../../utils/formatCurrency';
 import * as XLSX from 'xlsx'; 
 import dayjs from 'dayjs';
 
-// 🔥 SỬA LỖI Ở ĐÂY: Thêm Text vào để tránh trùng với đối tượng DOM của trình duyệt
 const { Title, Text } = Typography; 
 const COLORS = ['#52c41a', '#FFBB28', '#FF8042', '#1890ff', '#FF4D4F'];
 
@@ -17,38 +16,47 @@ const Dashboard = () => {
     const [realData, setRealData] = useState({ revenue: 0, orderCount: 0 });
 
     useEffect(() => {
-    const fetchStats = async () => {
-        setLoading(true);
-        try {
-            const response = await getDashboardStats();
-            if (response.success) {
-                const data = response.data;
-                
-                // 🔥 SỬA CHỖ NÀY: Backend của ní trả về mảng đơn hàng trong data.orders
-                const ordersList = data.orders || [];
+        const fetchStats = async () => {
+            setLoading(true);
+            try {
+                const response = await getDashboardStats();
+                if (response.success && response.data) {
+                    const data = response.data;
+                    
+                    // Lấy danh sách đơn hàng thực tế
+                    const ordersList = data.orders || data.allOrders || [];
 
-                // Lọc đơn Đã giao (Status trong hình của ní là 'DELIVERED')
-                const deliveredOrders = ordersList.filter(order => order.status === 'DELIVERED');
+                    // Lọc đơn hàng đã giao (Chấp nhận cả DELIVERED và "Đã giao")
+                    const deliveredOrders = ordersList.filter(order => {
+                        const status = String(order.status).toUpperCase();
+                        return status === 'DELIVERED' || status === 'ĐÃ GIAO';
+                    });
 
-                // Tính tổng tiền - Dùng 'totalAmount' hoặc 'totalPrice' tùy API
-                const totalRevenue = deliveredOrders.reduce((sum, order) => {
-                    return sum + (Number(order.totalAmount) || Number(order.totalPrice) || 0);
-                }, 0);
-                
-                setRealData({
-                    revenue: totalRevenue,
-                    orderCount: deliveredOrders.length
-                });
-                setStats(data);
+                    // Tính tổng doanh thu (Xử lý trường hợp tiền là chuỗi như "4.200.000 ₫")
+                    const totalRevenue = deliveredOrders.reduce((sum, order) => {
+                        let price = order.totalAmount || order.totalPrice || 0;
+                        if (typeof price === 'string') {
+                            // Xóa bỏ tất cả ký tự không phải số (₫, dấu chấm, dấu phẩy)
+                            price = Number(price.replace(/[^0-9]/g, ""));
+                        }
+                        return sum + (Number(price) || 0);
+                    }, 0);
+                    
+                    setRealData({
+                        revenue: totalRevenue,
+                        orderCount: deliveredOrders.length
+                    });
+                    setStats(data);
+                }
+            } catch (error) {
+                console.error("Lỗi Dashboard:", error);
+                message.error('Lỗi cập nhật số liệu thực.');
+            } finally {
+                setLoading(false);
             }
-        } catch (error) {
-            message.error('Lỗi cập nhật số liệu.');
-        } finally {
-            setLoading(false);
-        }
-    };
-    fetchStats();
-}, []);
+        };
+        fetchStats();
+    }, []);
 
     const handleExportExcel = () => {
         if (!stats) return;
@@ -66,7 +74,8 @@ const Dashboard = () => {
     if (!stats) return <div style={{ color: '#fff', textAlign: 'center' }}>Không có dữ liệu thống kê.</div>;
 
     const pieData = Object.entries(stats.ordersByStatus || {}).map(([name, value]) => ({
-        name: name === 'DELIVERED' ? 'Thành công' : (name === 'PENDING' ? 'Chờ duyệt' : name),
+        name: name === 'DELIVERED' || name === 'Đã giao' ? 'Thành công' : 
+              (name === 'PENDING' || name === 'Chờ duyệt' ? 'Chờ duyệt' : name),
         value
     })).filter(item => item.value > 0);
 
