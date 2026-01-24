@@ -1,4 +1,3 @@
-// src/pages/admin/OrderManagement.jsx
 import React, { useState, useEffect } from 'react';
 import { Table, Tag, Select, message, Spin, Typography } from 'antd';
 import { getAllOrdersAdmin, updateOrderStatusAdmin } from '../../api/orderApi';
@@ -63,20 +62,26 @@ const OrderManagement = () => {
             render: (id) => <b>#{id}</b> 
         },
         { 
-    title: 'Khách Hàng', 
-    key: 'customer', 
-    render: (_, record) => (
-        <div>
-            {/* Thử tất cả các trường có thể chứa tên: fullName, name, hoặc user.fullName */}
-            <div style={{ fontWeight: 'bold' }}>
-                {record.fullName || record.user?.fullName || record.name || "Chưa có tên"}
-            </div>
-            <div style={{ fontSize: '12px', color: '#666' }}>
-                {record.phone || record.user?.phone}
-            </div>
-        </div>
-    )
-},
+            title: 'Khách Hàng', 
+            key: 'customer', 
+            render: (_, record) => {
+                // LOGIC KIỂM TRA: Nếu có record.fullName (lấy từ đơn hàng) 
+                // hoặc record.user.fullName (lấy từ liên kết user)
+                const customerName = record.fullName || record.user?.fullName;
+                const customerPhone = record.phone || record.user?.phone;
+
+                return (
+                    <div>
+                        <div style={{ fontWeight: 'bold' }}>
+                            {customerName ? customerName : <Tag color="default">Người dùng đã xóa</Tag>}
+                        </div>
+                        <div style={{ fontSize: '12px', color: '#666' }}>
+                            {customerPhone ? customerPhone : "---"}
+                        </div>
+                    </div>
+                );
+            }
+        },
         { 
             title: 'Ngày Đặt', 
             dataIndex: 'createdAt', 
