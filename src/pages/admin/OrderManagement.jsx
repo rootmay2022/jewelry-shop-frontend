@@ -65,18 +65,26 @@ const OrderManagement = () => {
             title: 'Khách Hàng', 
             key: 'customer', 
             render: (_, record) => {
-                // LOGIC KIỂM TRA: Nếu có record.fullName (lấy từ đơn hàng) 
-                // hoặc record.user.fullName (lấy từ liên kết user)
-                const customerName = record.fullName || record.user?.fullName;
-                const customerPhone = record.phone || record.user?.phone;
+                // ƯU TIÊN 1: Lấy trực tiếp từ đơn hàng (fullName, phone này lưu lúc khách bấm đặt hàng)
+                // ƯU TIÊN 2: Lấy từ object user liên kết (nếu khách không nhập form mà lấy từ profile)
+                // ƯU TIÊN 3: Lấy username nếu không có tên thật
+                const displayName = record.fullName || record.user?.fullName || record.user?.username || record.name;
+                const displayPhone = record.phone || record.user?.phone;
+
+                // CHỈ HIỆN "ĐÃ XÓA" KHI: Không tìm thấy bất cứ cái tên nào VÀ object user bị null hoàn toàn
+                const isUserDeleted = !record.user && !record.fullName && !record.name;
 
                 return (
                     <div>
-                        <div style={{ fontWeight: 'bold' }}>
-                            {customerName ? customerName : <Tag color="default">Người dùng đã xóa</Tag>}
+                        <div style={{ fontWeight: 'bold', color: isUserDeleted ? '#999' : '#0B3D91' }}>
+                            {isUserDeleted ? (
+                                <Tag color="default">Người dùng đã xóa</Tag>
+                            ) : (
+                                displayName || "Khách ẩn danh"
+                            )}
                         </div>
                         <div style={{ fontSize: '12px', color: '#666' }}>
-                            {customerPhone ? customerPhone : "---"}
+                            {displayPhone || "---"}
                         </div>
                     </div>
                 );
@@ -86,7 +94,7 @@ const OrderManagement = () => {
             title: 'Ngày Đặt', 
             dataIndex: 'createdAt', 
             key: 'createdAt', 
-            render: (text) => dayjs(text).format('DD/MM/YYYY') 
+            render: (text) => dayjs(text).format('DD/MM/YYYY HH:mm') 
         },
         { 
             title: 'Tổng Tiền', 
@@ -101,7 +109,7 @@ const OrderManagement = () => {
             render: (status) => getStatusTag(status) 
         },
         {
-            title: 'Cập Nhật Trạng Thái',
+            title: 'Thao Tác',
             key: 'action',
             render: (_, record) => (
                 <Select
@@ -121,15 +129,18 @@ const OrderManagement = () => {
     ];
 
     return (
-        <div style={{ padding: '20px' }}>
-            <Title level={2}>Quản Lý Đơn Hàng</Title>
+        <div style={{ padding: '24px', background: '#fff', borderRadius: '8px' }}>
+            <Title level={2} style={{ marginBottom: '24px' }}>Quản Lý Đơn Hàng</Title>
             <Spin spinning={loading}>
                 <Table 
                     columns={columns} 
                     dataSource={orders} 
                     rowKey="id"
                     bordered
-                    pagination={{ pageSize: 10 }}
+                    pagination={{ 
+                        pageSize: 10,
+                        showTotal: (total) => `Tổng cộng ${total} đơn hàng`
+                    }}
                 />
             </Spin>
         </div>
