@@ -10,7 +10,6 @@ export const AuthProvider = ({ children }) => {
   const [isAdmin, setIsAdmin] = useState(false);
   const [loading, setLoading] = useState(true);
 
-  // 1. Khởi tạo: Check token khi load trang
   useEffect(() => {
     const initAuth = () => {
       const token = localStorage.getItem('token');
@@ -26,16 +25,27 @@ export const AuthProvider = ({ children }) => {
           localStorage.clear();
         }
       }
-      setLoading(false); // Xong xuôi mới tắt loading
+      setLoading(false);
     };
     initAuth();
   }, []);
 
+  // HÀM SỬA LOGIC: Khớp với JSON ní gửi
   const saveAuthData = (data) => {
     const token = data.token;
-    const userData = data.user;
+    
+    // Gom dữ liệu trực tiếp từ 'data' vì Backend không để trong object 'user'
+    const userData = {
+      id: data.id,
+      username: data.username,
+      email: data.email,
+      role: data.role,
+      fullName: data.fullName,
+      phone: data.phone,
+      address: data.address
+    };
 
-    if (token && userData) {
+    if (token && userData.role) {
       localStorage.setItem('token', token);
       localStorage.setItem('user', JSON.stringify(userData));
       
@@ -46,14 +56,11 @@ export const AuthProvider = ({ children }) => {
   };
 
   const login = async (credentials) => {
-    // Bật loading để các ProtectedRoute đứng yên đợi
     setLoading(true); 
     try {
       const response = await loginApi(credentials);
       if (response && response.success && response.data) {
         saveAuthData(response.data);
-        setLoading(false); // Tắt loading sau khi đã set user xong
-        return response;
       }
       setLoading(false);
       return response;

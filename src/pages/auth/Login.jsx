@@ -12,37 +12,28 @@ const Login = () => {
   const location = useLocation();
   const { login } = useAuth();
   
-  // Lấy trang đích người dùng muốn tới, mặc định là trang chủ
   const from = location.state?.from?.pathname || '/';
 
   const onFinish = async (values) => {
     setLoading(true);
     try {
-      // 1. Gọi hàm login từ AuthContext
-      // Hàm này đã bao gồm việc lưu token và set User vào State
       const response = await login(values);
       
       if (response && response.success) {
         message.success('Đăng nhập thành công!');
         
-        // 2. Lấy ROLE chuẩn từ cấu trúc dữ liệu Backend
-        // Dựa trên saveAuthData: dữ liệu user nằm trong response.data.user
-        const userData = response.data?.user;
-        const userRole = userData?.role;
+        // SỬA TẠI ĐÂY: Lấy role trực tiếp từ response.data (vì không có lồng object user)
+        const userRole = response.data?.role;
 
-        console.log("Đăng nhập với Role:", userRole);
-
-        // 3. MẸO QUAN TRỌNG: Đợi một nhịp nhỏ để AuthContext cập nhật IsAuthenticated = true
-        // Nếu chuyển ngay lập tức, ProtectedRoute có thể chưa kịp nhận state mới
+        // Đợi 300ms để đảm bảo AuthContext đã cập nhật xong State vào hệ thống
         setTimeout(() => {
           if (userRole === 'ADMIN') {
             navigate('/admin', { replace: true });
           } else {
-            // Nếu "from" là trang login hoặc register thì ép về trang chủ để tránh lặp
             const destination = (from === '/login' || from === '/register') ? '/' : from;
             navigate(destination, { replace: true });
           }
-        }, 300); 
+        }, 300);
 
       } else {
         message.error(response?.message || 'Tên đăng nhập hoặc mật khẩu không đúng.');
@@ -52,8 +43,6 @@ const Login = () => {
       const errorDescription = error.response?.data?.message || error.message || 'Đã xảy ra lỗi hệ thống.';
       message.error(errorDescription);
     } finally {
-      // Chỉ tắt loading cục bộ nếu đăng nhập thất bại
-      // Nếu thành công, AuthContext và việc chuyển trang sẽ quản lý giao diện
       setLoading(false);
     }
   };
