@@ -14,14 +14,13 @@ const CheckoutPage = () => {
     const { cart, clearCart } = useCart();
     const { user } = useAuth();
     const [loading, setLoading] = useState(false);
-    const [orderPlaced, setOrderPlaced] = useState(false); // Thêm cờ này để chặn bị đá về /cart
+    const [orderPlaced, setOrderPlaced] = useState(false);
     const navigate = useNavigate();
     const [form] = Form.useForm();
     const { message } = App.useApp();
     
     const paymentMethod = Form.useWatch('paymentMethod', form);
 
-    // SỬA TẠI ĐÂY: Chỉ điều hướng nếu chưa đặt hàng thành công
     useEffect(() => {
         if (!orderPlaced && (!cart || cart.items.length === 0)) {
             navigate('/cart');
@@ -47,7 +46,7 @@ const CheckoutPage = () => {
         const accountNo = "89999999251105"; 
         const accountName = "NGUYEN KHANH HUNG"; 
         const amount = order.totalAmount;
-        const description = `THANH TOAN DON HANG ${order.id}`; // Bỏ ký tự đặc biệt cho chắc
+        const description = `THANH TOAN DON HANG ${order.id}`;
 
         const qrUrl = `https://img.vietqr.io/image/${bankId}-${accountNo}-compact2.png?amount=${amount}&addInfo=${encodeURIComponent(description)}&accountName=${encodeURIComponent(accountName)}`;
 
@@ -70,7 +69,6 @@ const CheckoutPage = () => {
                 </div>
             ),
             onOk: async () => {
-                // CHỐT HẠ: Xóa giỏ và đi tới trang thành công
                 await clearCart();
                 navigate(`/order-success/${order.id}`);
             },
@@ -81,9 +79,26 @@ const CheckoutPage = () => {
     const handlePlaceOrder = async (values) => {
         setLoading(true);
         try {
-            const response = await createOrder(values);
+            // LOGIC QUAN TRỌNG: Gom tất cả dữ liệu lại trước khi gửi
+            const orderPayload = {
+                ...values,                        // fullName, phone, shippingAddress, paymentMethod
+                userId: user?.id,                 // ID người mua
+                totalAmount: cart.totalAmount,    // Tổng tiền đơn hàng
+                // Biến đổi danh sách item cho đúng format Backend cần
+                items: cart.items.map(item => ({
+                    productId: item.id || item.productId, 
+                    quantity: item.quantity,
+                    price: item.price
+                }))
+            };
+
+            console.log("Dữ liệu gửi lên Backend nè ní:", orderPayload);
+
+            // GỬI orderPayload CHỨ KHÔNG GỬI values
+            const response = await createOrder(orderPayload); 
+            
             if (response.success) {
-                setOrderPlaced(true); // Đánh dấu đã đặt hàng để không bị useEffect đá ra
+                setOrderPlaced(true); 
                 const newOrder = response.data;
                 
                 if (values.paymentMethod === 'BANK_TRANSFER') {
@@ -97,6 +112,7 @@ const CheckoutPage = () => {
                 message.error(response.message || 'Đặt hàng thất bại.');
             }
         } catch (error) {
+            console.error("Lỗi chi tiết:", error.response?.data);
             message.error(error.response?.data?.message || 'Lỗi hệ thống khi đặt hàng.');
         } finally {
             setLoading(false);
