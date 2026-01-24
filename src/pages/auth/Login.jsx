@@ -19,26 +19,30 @@ const Login = () => {
     setLoading(true);
     try {
       // 1. Gọi hàm login từ AuthContext
+      // Hàm này đã bao gồm việc lưu token và set User vào State
       const response = await login(values);
       
       if (response && response.success) {
         message.success('Đăng nhập thành công!');
         
-        // Lấy data user để check role
-        const userData = response.data?.user || response.data;
+        // 2. Lấy ROLE chuẩn từ cấu trúc dữ liệu Backend
+        // Dựa trên saveAuthData: dữ liệu user nằm trong response.data.user
+        const userData = response.data?.user;
         const userRole = userData?.role;
 
-        // 2. MẸO QUAN TRỌNG: Dùng setTimeout để đợi AuthContext cập nhật State hoàn tất
-        // Việc này giúp tránh bị ProtectedRoute "đá" ra do check state quá nhanh
+        console.log("Đăng nhập với Role:", userRole);
+
+        // 3. MẸO QUAN TRỌNG: Đợi một nhịp nhỏ để AuthContext cập nhật IsAuthenticated = true
+        // Nếu chuyển ngay lập tức, ProtectedRoute có thể chưa kịp nhận state mới
         setTimeout(() => {
           if (userRole === 'ADMIN') {
             navigate('/admin', { replace: true });
           } else {
-            // Nếu "from" là trang login thì ép về "/", tránh lặp vô hạn
+            // Nếu "from" là trang login hoặc register thì ép về trang chủ để tránh lặp
             const destination = (from === '/login' || from === '/register') ? '/' : from;
             navigate(destination, { replace: true });
           }
-        }, 300); // Đợi 300ms là khoảng thời gian "vàng" để state kịp ngấm
+        }, 300); 
 
       } else {
         message.error(response?.message || 'Tên đăng nhập hoặc mật khẩu không đúng.');
@@ -48,8 +52,8 @@ const Login = () => {
       const errorDescription = error.response?.data?.message || error.message || 'Đã xảy ra lỗi hệ thống.';
       message.error(errorDescription);
     } finally {
-      // Chỉ tắt loading ở đây nếu không thành công, 
-      // nếu thành công thì setTimeout ở trên sẽ lo việc chuyển trang
+      // Chỉ tắt loading cục bộ nếu đăng nhập thất bại
+      // Nếu thành công, AuthContext và việc chuyển trang sẽ quản lý giao diện
       setLoading(false);
     }
   };
@@ -128,7 +132,7 @@ const Login = () => {
           <div style={{ textAlign: 'center', marginTop: '16px' }}>
             Chưa có tài khoản? <Link to="/register" style={{ fontWeight: '600', color: '#0B3D91' }}>Đăng ký ngay!</Link>
           </div>
-          <div style={{ height: '20px' }}></div> {/* Giảm bớt khoảng trống thừa */}
+          <div style={{ height: '20px' }}></div>
         </Form>
       </Card>
     </div>
