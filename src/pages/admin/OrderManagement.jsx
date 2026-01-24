@@ -21,19 +21,29 @@ const OrderManagement = () => {
                 getAllUsersAdmin()
             ]);
 
-            if (userRes.success) {
+            // Fix lỗi nếu API trả về thẳng data mà không có bọc .success
+            const userData = userRes.data || userRes;
+            const orderData = orderRes.data || orderRes;
+
+            if (Array.isArray(userData)) {
                 const mapping = {};
-                userRes.data.forEach(u => {
+                userData.forEach(u => {
                     mapping[u.id] = {
-                        name: u.full_name || u.username, // Khớp với cột full_name trong user.csv
+                        name: u.full_name || u.fullName || u.username,
                         phone: u.phone
                     };
                 });
                 setUsersMap(mapping);
             }
-            if (orderRes.success) setOrders(orderRes.data);
+
+            if (Array.isArray(orderData)) {
+                setOrders(orderData);
+            } else {
+                console.error("Dữ liệu đơn hàng không đúng định dạng mảng:", orderRes);
+            }
         } catch (error) {
-            message.error('Không thể tải dữ liệu.');
+            console.error("Lỗi Fetch:", error);
+            message.error('Không thể tải dữ liệu. Kiểm tra Console F12');
         } finally {
             setLoading(false);
         }
@@ -44,11 +54,14 @@ const OrderManagement = () => {
     const handleStatusChange = async (orderId, newStatus) => {
         try {
             const response = await updateOrderStatusAdmin(orderId, newStatus);
-            if (response.success) {
+            // Kiểm tra cả response.success hoặc response (nếu trả về object thẳng)
+            if (response.success || response) {
                 message.success('Cập nhật thành công!');
-                fetchData();
+                fetchData(); // Phải gọi lại để giao diện "ăn" trạng thái mới
             }
-        } catch (error) { message.error('Lỗi cập nhật.'); }
+        } catch (error) { 
+            message.error('Lỗi cập nhật trạng thái.'); 
+        }
     };
 
     const columns = [
@@ -62,7 +75,7 @@ const OrderManagement = () => {
             title: 'Khách Hàng', 
             key: 'customer', 
             render: (_, record) => {
-                // Kiểm tra user_id (từ bangodder.csv)
+                // Đọc cả 2 kiểu user_id (snake_case) và userId (camelCase)
                 const userId = record.user_id || record.userId;
                 const userInfo = usersMap[userId];
 
@@ -82,33 +95,35 @@ const OrderManagement = () => {
         },
         { 
             title: 'Địa Chỉ Giao', 
-            dataIndex: 'shipping_address', // Khớp với shipping_address trong CSV
+            dataIndex: 'shipping_address',
             key: 'shipping_address',
-            render: (address) => <Text copyable>{address || "Chưa có địa chỉ"}</Text>
+            // Render thêm fallback nếu shipping_address bị null
+            render: (text, record) => <Text copyable>{text || record.shippingAddress || "N/A"}</Text>
         },
         { 
             title: 'Ngày Đặt', 
-            dataIndex: 'order_date', // Khớp với order_date trong CSV
-            render: (date) => dayjs(date).format('DD/MM/YYYY HH:mm') 
+            dataIndex: 'order_date',
+            render: (date, record) => dayjs(date || record.orderDate).format('DD/MM/YYYY HH:mm') 
         },
         { 
             title: 'Tổng Tiền', 
-            dataIndex: 'total_amount', // Khớp với total_amount trong CSV
-            render: (val) => <b style={{ color: '#d4380d' }}>{formatCurrency(val)}</b> 
+            dataIndex: 'total_amount',
+            render: (val, record) => <b style={{ color: '#d4380d' }}>{formatCurrency(val || record.totalAmount)}</b> 
         },
         { 
             title: 'Trạng Thái', 
             dataIndex: 'status', 
             render: (status) => {
                 const colors = { PENDING: 'gold', CONFIRMED: 'blue', SHIPPING: 'cyan', DELIVERED: 'green', CANCELLED: 'red' };
-                return <Tag color={colors[status]}>{status}</Tag>;
+                return <Tag color={colors[status] || 'default'}>{status}</Tag>;
             }
         },
         {
-            title: 'Cập Nhật',
+            title: 'Thao Tác',
+            key: 'action',
             render: (_, record) => (
                 <Select
-                    defaultValue={record.status}
+                    value={record.status} // Dùng value thay vì defaultValue để nó nhảy theo state
                     style={{ width: 140 }}
                     onChange={(val) => handleStatusChange(record.id, val)}
                     disabled={['DELIVERED', 'CANCELLED'].includes(record.status)}
@@ -124,14 +139,15 @@ const OrderManagement = () => {
     ];
 
     return (
-        <div style={{ padding: '24px' }}>
-            <Title level={2}>Quản Lý Đơn Hàng</Title>
+        <div style={{ padding: '24px', background: '#fff', minHeight: '100vh' }}>
+            <Title level={2}>📦 Quản Lý Đơn Hàng</Title>
             <Table 
                 columns={columns} 
                 dataSource={orders} 
                 rowKey="id" 
                 loading={loading}
                 bordered 
+                pagination={{ pageSize: 8 }}
             />
         </div>
     );
