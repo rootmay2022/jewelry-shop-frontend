@@ -15,23 +15,40 @@ const Register = () => {
   const onFinish = async (values) => {
     setLoading(true);
     try {
-      // 1. Tách confirmPassword ra, chỉ lấy những cái Backend cần (username, email, password, fullName, phone, address)
-      const { confirmPassword, ...dataToSend } = values;
+      // 1. Bóc tách dữ liệu
+      // Chỉ lấy những trường Backend thực sự cần. 
+      // Nếu phone hoặc address trống, ta gửi chuỗi rỗng "" hoặc null tùy Backend.
+      const dataToSend = {
+        username: values.username.trim(),
+        email: values.email.trim(),
+        password: values.password,
+        fullName: values.fullName.trim(),
+        phone: values.phone || "", // Tránh gửi undefined
+        address: values.address || "" // Tránh gửi undefined
+      };
 
-      // 2. Gửi dataToSend (đã sạch sẽ) lên API
+      console.log("🚀 Dữ liệu gửi đi (Payload):", dataToSend);
+
+      // 2. Gọi API register
       const response = await register(dataToSend);
       
       if (response && response.success) {
         message.success('Đăng ký thành công! Đang chuyển hướng...');
         navigate('/login');
       } else {
-        // Nếu API trả về success: false kèm message
         message.error(response?.message || 'Đăng ký thất bại.');
       }
     } catch (error) {
-      // Lấy message lỗi chi tiết từ backend trả về để ní biết sai ở đâu (ví dụ: trùng email)
-      const errorMsg = error.message || (error.response?.data?.message) || 'Đã xảy ra lỗi. Vui lòng thử lại.';
-      message.error(errorMsg);
+      console.error("❌ Lỗi 400 hoặc lỗi hệ thống:", error);
+      
+      // Trích xuất thông báo lỗi từ Validation của Backend (nếu có)
+      const errorDetail = error.response?.data?.message || error.message;
+      
+      if (error.response?.status === 400) {
+        message.error(`Dữ liệu không hợp lệ: ${errorDetail}`);
+      } else {
+        message.error(errorDetail || 'Đã xảy ra lỗi. Vui lòng thử lại.');
+      }
     } finally {
       setLoading(false);
     }
@@ -64,6 +81,7 @@ const Register = () => {
           scrollToFirstError
           layout="vertical"
           requiredMark={false}
+          initialValues={{ phone: '', address: '' }} // Khởi tạo giá trị rỗng cho các trường không bắt buộc
         >
           <Form.Item
             name="username"
