@@ -13,21 +13,28 @@ const Register = () => {
   const [form] = Form.useForm();
 
   const onFinish = async (values) => {
-    setLoading(true);
-    try {
-      const response = await register(values);
-      if (response.success) {
-        message.success('Đăng ký thành công! Đang chuyển hướng...');
-        navigate('/login');
-      } else {
-        message.error(response.message || 'Đăng ký thất bại.');
-      }
-    } catch (error) {
-      message.error(error.response?.data?.message || 'Đã xảy ra lỗi. Vui lòng thử lại.');
-    } finally {
-      setLoading(false);
+  setLoading(true);
+  try {
+    // 1. Tách confirmPassword ra, chỉ lấy những cái Backend cần
+    const { confirmPassword, ...dataToSend } = values;
+
+    // 2. Gửi dataToSend (đã sạch sẽ) lên API
+    const response = await register(dataToSend);
+    
+    if (response.success) {
+      message.success('Đăng ký thành công! Đang chuyển hướng...');
+      navigate('/login');
+    } else {
+      message.error(response.message || 'Đăng ký thất bại.');
     }
-  };
+  } catch (error) {
+    // Sửa chỗ này để bắt message từ backend trả về nếu có
+    const errorMsg = error.response?.data?.message || error.message || 'Đã xảy ra lỗi.';
+    message.error(errorMsg);
+  } finally {
+    setLoading(false);
+  }
+};
 
   return (
     <div style={{ 
