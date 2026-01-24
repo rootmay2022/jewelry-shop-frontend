@@ -1,101 +1,134 @@
 import React, { useState, useEffect } from 'react';
 import { Table, Tag, Select, message, Spin, Typography } from 'antd';
 import { getAllOrdersAdmin, updateOrderStatusAdmin } from '../../api/orderApi';
-import { getAllUsersAdmin } from '../../api/userApi'; // Ní cần có hàm lấy danh sách User
+import { getAllUsersAdmin } from '../../api/userApi';
 import dayjs from 'dayjs';
 import formatCurrency from '../../utils/formatCurrency';
 
 const { Title, Text } = Typography;
+const { Option } = Select;
 
 const OrderManagement = () => {
     const [orders, setOrders] = useState([]);
-    const [usersMap, setUsersMap] = useState({}); // Nơi lưu trữ: { "ID_1": "Tên A", "ID_2": "Tên B" }
+    const [usersMap, setUsersMap] = useState({});
     const [loading, setLoading] = useState(true);
 
     const fetchData = async () => {
         setLoading(true);
         try {
-            // 1. Lấy tất cả đơn hàng
-            const orderRes = await getAllOrdersAdmin();
-            
-            // 2. Lấy tất cả User để làm "danh bạ" tra cứu
-            // Nếu ní chưa có API getAllUsersAdmin, hãy kiểm tra lại file userApi của ní nhé
-            const userRes = await getAllUsersAdmin();
+            const [orderRes, userRes] = await Promise.all([
+                getAllOrdersAdmin(),
+                getAllUsersAdmin()
+            ]);
 
-            if (orderRes.success && userRes.success) {
-                // Tạo một cái bản đồ tra cứu (Map) cho nhanh
-                const userMapping = {};
+            if (userRes.success) {
+                const mapping = {};
                 userRes.data.forEach(u => {
-                    userMapping[u.id] = {
-                        name: u.fullName || u.username,
+                    mapping[u.id] = {
+                        name: u.full_name || u.username, // Khớp với cột full_name trong user.csv
                         phone: u.phone
                     };
                 });
-                
-                setUsersMap(userMapping);
-                setOrders(orderRes.data);
+                setUsersMap(mapping);
             }
+            if (orderRes.success) setOrders(orderRes.data);
         } catch (error) {
-            console.error("Lỗi tra cứu:", error);
-            message.error('Không thể đồng bộ dữ liệu người dùng.');
+            message.error('Không thể tải dữ liệu.');
         } finally {
             setLoading(false);
         }
     };
 
-    useEffect(() => {
-        fetchData();
-    }, []);
+    useEffect(() => { fetchData(); }, []);
+
+    const handleStatusChange = async (orderId, newStatus) => {
+        try {
+            const response = await updateOrderStatusAdmin(orderId, newStatus);
+            if (response.success) {
+                message.success('Cập nhật thành công!');
+                fetchData();
+            }
+        } catch (error) { message.error('Lỗi cập nhật.'); }
+    };
 
     const columns = [
-        { title: 'Mã Đơn', dataIndex: 'id', key: 'id' },
+        { 
+            title: 'Mã Đơn', 
+            dataIndex: 'id', 
+            key: 'id', 
+            render: (id) => <b>#{id}</b> 
+        },
         { 
             title: 'Khách Hàng', 
             key: 'customer', 
             render: (_, record) => {
-                // Bước 1: Thử lấy tên trực tiếp trên đơn (nếu có)
-                // Bước 2: Nếu không có, dùng userId để tra trong "danh bạ" usersMap
-                const userId = record.userId || record.user?.id;
+                // Kiểm tra user_id (từ bangodder.csv)
+                const userId = record.user_id || record.userId;
                 const userInfo = usersMap[userId];
-
-                const finalName = record.fullName || userInfo?.name;
-                const finalPhone = record.phone || userInfo?.phone;
 
                 return (
                     <div>
-                        <div style={{ fontWeight: 'bold', color: '#0B3D91' }}>
-                            {finalName || (userId ? `User ID: ${userId}` : "Khách vãng lai")}
+                        <div style={{ fontWeight: 'bold' }}>
+                            {userInfo ? (
+                                <Text type="primary">{userInfo.name}</Text>
+                            ) : (
+                                <Tag color="volcano">Người dùng đã xóa (ID: {userId})</Tag>
+                            )}
                         </div>
-                        <div style={{ fontSize: '12px', color: '#666' }}>
-                            {finalPhone || "---"}
-                        </div>
+                        {userInfo?.phone && <div style={{ fontSize: '12px', color: '#888' }}>{userInfo.phone}</div>}
                     </div>
                 );
             }
         },
         { 
+            title: 'Địa Chỉ Giao', 
+            dataIndex: 'shipping_address', // Khớp với shipping_address trong CSV
+            key: 'shipping_address',
+            render: (address) => <Text copyable>{address || "Chưa có địa chỉ"}</Text>
+        },
+        { 
             title: 'Ngày Đặt', 
-            dataIndex: 'createdAt', 
-            render: (d) => dayjs(d).format('DD/MM/YYYY') 
+            dataIndex: 'order_date', // Khớp với order_date trong CSV
+            render: (date) => dayjs(date).format('DD/MM/YYYY HH:mm') 
         },
         { 
             title: 'Tổng Tiền', 
-            dataIndex: 'totalAmount', 
-            render: (v) => <Text strong type="danger">{formatCurrency(v)}</Text> 
+            dataIndex: 'total_amount', // Khớp với total_amount trong CSV
+            render: (val) => <b style={{ color: '#d4380d' }}>{formatCurrency(val)}</b> 
         },
         { 
             title: 'Trạng Thái', 
             dataIndex: 'status', 
-            render: (s) => <Tag color="blue">{s}</Tag> 
-        }
+            render: (status) => {
+                const colors = { PENDING: 'gold', CONFIRMED: 'blue', SHIPPING: 'cyan', DELIVERED: 'green', CANCELLED: 'red' };
+                return <Tag color={colors[status]}>{status}</Tag>;
+            }
+        },
+        {
+            title: 'Cập Nhật',
+            render: (_, record) => (
+                <Select
+                    defaultValue={record.status}
+                    style={{ width: 140 }}
+                    onChange={(val) => handleStatusChange(record.id, val)}
+                    disabled={['DELIVERED', 'CANCELLED'].includes(record.status)}
+                >
+                    <Option value="PENDING">Chờ duyệt</Option>
+                    <Option value="CONFIRMED">Xác nhận</Option>
+                    <Option value="SHIPPING">Đang giao</Option>
+                    <Option value="DELIVERED">Đã giao</Option>
+                    <Option value="CANCELLED">Hủy đơn</Option>
+                </Select>
+            ),
+        },
     ];
 
     return (
         <div style={{ padding: '24px' }}>
             <Title level={2}>Quản Lý Đơn Hàng</Title>
             <Table 
-                dataSource={orders} 
                 columns={columns} 
+                dataSource={orders} 
                 rowKey="id" 
                 loading={loading}
                 bordered 
