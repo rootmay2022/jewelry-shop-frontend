@@ -3,7 +3,6 @@ import { Row, Col, Card, Statistic, Spin, message, Typography, Button, Table, Ta
 import { ShoppingCartOutlined, DollarCircleOutlined, FileExcelOutlined, CheckCircleOutlined } from '@ant-design/icons';
 import { PieChart, Pie, Cell, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import { getDashboardStats } from '../../api/adminApi';
-import { getAllUsersAdmin } from '../../api/userApi'; // Để lấy tên khách từ ID
 import formatCurrency from '../../utils/formatCurrency';
 import * as XLSX from 'xlsx'; 
 import dayjs from 'dayjs';

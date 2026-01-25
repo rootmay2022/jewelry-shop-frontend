@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Table, Tag, Select, message, Spin, Typography } from 'antd';
 import { getAllOrdersAdmin, updateOrderStatusAdmin } from '../../api/orderApi';
-import { getAllUsersAdmin } from '../../api/userApi';
+import { getAllUsersAdmin } from '../../api/authApi'; // ĐÃ ĐỔI THÀNH authApi
 import dayjs from 'dayjs';
 import formatCurrency from '../../utils/formatCurrency';
 
@@ -16,12 +16,15 @@ const OrderManagement = () => {
     const fetchData = async () => {
         setLoading(true);
         try {
+            // Chỉ gọi API khi ní chắc chắn hàm getAllUsersAdmin có trong authApi
             const [orderRes, userRes] = await Promise.all([
                 getAllOrdersAdmin(),
-                getAllUsersAdmin()
+                getAllUsersAdmin().catch(e => {
+                    console.error("Lỗi lấy User:", e);
+                    return []; // Trả về mảng rỗng nếu lỗi để ko sập web
+                })
             ]);
 
-            // Fix lỗi nếu API trả về thẳng data mà không có bọc .success
             const userData = userRes.data || userRes;
             const orderData = orderRes.data || orderRes;
 
@@ -38,12 +41,10 @@ const OrderManagement = () => {
 
             if (Array.isArray(orderData)) {
                 setOrders(orderData);
-            } else {
-                console.error("Dữ liệu đơn hàng không đúng định dạng mảng:", orderRes);
             }
         } catch (error) {
             console.error("Lỗi Fetch:", error);
-            message.error('Không thể tải dữ liệu. Kiểm tra Console F12');
+            message.error('Lỗi tải dữ liệu đơn hàng');
         } finally {
             setLoading(false);
         }
@@ -54,10 +55,9 @@ const OrderManagement = () => {
     const handleStatusChange = async (orderId, newStatus) => {
         try {
             const response = await updateOrderStatusAdmin(orderId, newStatus);
-            // Kiểm tra cả response.success hoặc response (nếu trả về object thẳng)
             if (response.success || response) {
                 message.success('Cập nhật thành công!');
-                fetchData(); // Phải gọi lại để giao diện "ăn" trạng thái mới
+                fetchData();
             }
         } catch (error) { 
             message.error('Lỗi cập nhật trạng thái.'); 
@@ -65,28 +65,17 @@ const OrderManagement = () => {
     };
 
     const columns = [
-        { 
-            title: 'Mã Đơn', 
-            dataIndex: 'id', 
-            key: 'id', 
-            render: (id) => <b>#{id}</b> 
-        },
+        { title: 'Mã Đơn', dataIndex: 'id', key: 'id', render: (id) => <b>#{id}</b> },
         { 
             title: 'Khách Hàng', 
             key: 'customer', 
             render: (_, record) => {
-                // Đọc cả 2 kiểu user_id (snake_case) và userId (camelCase)
                 const userId = record.user_id || record.userId;
                 const userInfo = usersMap[userId];
-
                 return (
                     <div>
                         <div style={{ fontWeight: 'bold' }}>
-                            {userInfo ? (
-                                <Text type="primary">{userInfo.name}</Text>
-                            ) : (
-                                <Tag color="volcano">Người dùng đã xóa (ID: {userId})</Tag>
-                            )}
+                            {userInfo ? <Text type="primary">{userInfo.name}</Text> : <Tag color="volcano">ID: {userId}</Tag>}
                         </div>
                         {userInfo?.phone && <div style={{ fontSize: '12px', color: '#888' }}>{userInfo.phone}</div>}
                     </div>
@@ -97,7 +86,6 @@ const OrderManagement = () => {
             title: 'Địa Chỉ Giao', 
             dataIndex: 'shipping_address',
             key: 'shipping_address',
-            // Render thêm fallback nếu shipping_address bị null
             render: (text, record) => <Text copyable>{text || record.shippingAddress || "N/A"}</Text>
         },
         { 
@@ -123,7 +111,7 @@ const OrderManagement = () => {
             key: 'action',
             render: (_, record) => (
                 <Select
-                    value={record.status} // Dùng value thay vì defaultValue để nó nhảy theo state
+                    value={record.status}
                     style={{ width: 140 }}
                     onChange={(val) => handleStatusChange(record.id, val)}
                     disabled={['DELIVERED', 'CANCELLED'].includes(record.status)}
@@ -141,14 +129,7 @@ const OrderManagement = () => {
     return (
         <div style={{ padding: '24px', background: '#fff', minHeight: '100vh' }}>
             <Title level={2}>📦 Quản Lý Đơn Hàng</Title>
-            <Table 
-                columns={columns} 
-                dataSource={orders} 
-                rowKey="id" 
-                loading={loading}
-                bordered 
-                pagination={{ pageSize: 8 }}
-            />
+            <Table columns={columns} dataSource={orders} rowKey="id" loading={loading} bordered pagination={{ pageSize: 8 }} />
         </div>
     );
 };
