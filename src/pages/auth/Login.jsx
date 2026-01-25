@@ -3,6 +3,7 @@ import { Form, Input, Button, Card, Typography, message } from 'antd';
 import { UserOutlined, LockOutlined } from '@ant-design/icons';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
+import fpPromise from '@fingerprintjs/fingerprintjs'; // <-- THÊM MỚI
 
 const { Title } = Typography;
 
@@ -17,7 +18,16 @@ const Login = () => {
   const onFinish = async (values) => {
     setLoading(true);
     try {
-      const response = await login(values);
+      // --- THÊM LOGIC LẤY DEVICE ID ---
+      const fp = await fpPromise.load();
+      const result = await fp.get();
+      const deviceId = result.visitorId;
+      // -------------------------------
+
+      // Gộp Device ID vào payload đăng nhập để backend ghi nhận
+      const dataWithDevice = { ...values, device_id: deviceId };
+
+      const response = await login(dataWithDevice);
       
       if (response && response.success) {
         message.success('Đăng nhập thành công!');

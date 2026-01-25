@@ -3,6 +3,7 @@ import { Form, Input, Button, Card, Typography, message } from 'antd';
 import { UserOutlined, LockOutlined, MailOutlined, PhoneOutlined, HomeOutlined } from '@ant-design/icons';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
+import fpPromise from '@fingerprintjs/fingerprintjs'; // <-- THÊM MỚI ĐỂ LẤY DEVICE ID
 
 const { Title } = Typography;
 
@@ -15,6 +16,12 @@ const Register = () => {
   const onFinish = async (values) => {
     setLoading(true);
     try {
+      // --- THÊM LOGIC LẤY ĐỊNH DANH THIẾT BỊ ---
+      const fp = await fpPromise.load();
+      const result = await fp.get();
+      const deviceId = result.visitorId;
+      // -----------------------------------------
+
       // 1. Bóc tách dữ liệu
       // Chỉ lấy những trường Backend thực sự cần. 
       // Nếu phone hoặc address trống, ta gửi chuỗi rỗng "" hoặc null tùy Backend.
@@ -22,9 +29,10 @@ const Register = () => {
         username: values.username.trim(),
         email: values.email.trim(),
         password: values.password,
-        fullName: values.fullName.trim(),
+        full_name: values.fullName.trim(), // SỬA: Khớp với cột full_name trong database
         phone: values.phone || "", // Tránh gửi undefined
-        address: values.address || "" // Tránh gửi undefined
+        address: values.address || "", // Tránh gửi undefined
+        device_id: deviceId // THÊM: Cột mới để quản lý thiết bị
       };
 
       console.log("🚀 Dữ liệu gửi đi (Payload):", dataToSend);
