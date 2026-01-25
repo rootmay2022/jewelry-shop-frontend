@@ -1,6 +1,7 @@
 import React from 'react';
 import { useCart } from '../../context/CartContext';
-import { Row, Col, Card, Typography, Button, Empty, Spin, Breadcrumb, Divider } from 'antd';
+// Thêm Space vào đây nè ní
+import { Row, Col, Card, Typography, Button, Empty, Spin, Breadcrumb, Divider, Space } from 'antd';
 import { Link } from 'react-router-dom';
 import { ShoppingCartOutlined, ArrowLeftOutlined, SafetyCertificateOutlined } from '@ant-design/icons';
 import CartItem from '../../components/cart/CartItem';
@@ -13,11 +14,10 @@ const CartPage = () => {
 
     const theme = {
         navy: '#001529',
-        gold: '#D4AF37',
+        gold: '#C5A059', // Dùng màu gold đồng bộ với trang Home
         bg: '#fbfbfb'
     };
 
-    // Trang loading sang trọng
     if (loading && !cart) {
         return (
             <div style={{ display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', height: '80vh' }}>
@@ -27,7 +27,6 @@ const CartPage = () => {
         );
     }
 
-    // Trang giỏ hàng trống được thiết kế lại
     if (!cart || cart.items.length === 0) {
         return (
             <div style={{ textAlign: 'center', padding: '120px 20px', background: theme.bg, minHeight: '80vh' }}>
@@ -83,7 +82,6 @@ const CartPage = () => {
             <div style={{ padding: '0 10%' }}>
                 <Row gutter={[40, 40]}>
                     <Col xs={24} lg={16}>
-                        {/* List Items - Giữ logic map của ní */}
                         <div style={{ marginBottom: '30px' }}>
                             {cart.items.map((item, index) => (
                                 <div key={item.id}>
@@ -93,10 +91,10 @@ const CartPage = () => {
                             ))}
                         </div>
 
-                        {/* Thông tin thêm cho khách hàng */}
+                        {/* Thông tin thêm - Space đã được định nghĩa */}
                         <Card style={{ background: '#fff', border: '1px dashed #d9d9d9', borderRadius: 0 }}>
-                            <Row gutter={24}>
-                                <Col span={12}>
+                            <Row gutter={[24, 24]}>
+                                <Col xs={24} md={12}>
                                     <Space align="start">
                                         <SafetyCertificateOutlined style={{ color: theme.gold, fontSize: '24px' }} />
                                         <div>
@@ -105,7 +103,7 @@ const CartPage = () => {
                                         </div>
                                     </Space>
                                 </Col>
-                                <Col span={12}>
+                                <Col xs={24} md={12}>
                                     <Space align="start">
                                         <ShoppingCartOutlined style={{ color: theme.gold, fontSize: '24px' }} />
                                         <div>
