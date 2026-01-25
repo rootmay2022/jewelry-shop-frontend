@@ -1,85 +1,128 @@
-// src/pages/order/MyOrdersPage.jsx
 import React, { useState, useEffect } from 'react';
-import { Table, Tag, Button, message, Spin, Typography, Modal, Space } from 'antd';
-import { getUserOrders, cancelOrder } from '../../api/orderApi';
+import { Table, Tag, Button, message, Spin, Typography, Modal, Space, Card, Divider, Empty } from 'antd';
+// Sửa dòng số 3 thành như sau:
+import { 
+  EyeOutlined, 
+  CloseCircleOutlined, 
+  Package重量Outlined, // Thay bằng BoxPlotOutlined hoặc dùng icon khác
+  ClockCircleOutlined, // Đây là cái tên đúng của nó
+  TruckOutlined, 
+  CheckCircleOutlined,
+  ShoppingOutlined 
+} from '@ant-design/icons';import { getUserOrders, cancelOrder } from '../../api/orderApi';
 import dayjs from 'dayjs';
 import formatCurrency from '../../utils/formatCurrency';
 
 const { Title, Text } = Typography;
 
 const MyOrdersPage = () => {
-    // Sửa lỗi 1: Khởi tạo là mảng rỗng []
-    const [orders, setOrders] = useState([]);
-    const [loading, setLoading] = useState(true);
-    // Sửa lỗi 2: Thiếu [selectedOrder, setSelectedOrder]
-    const [selectedOrder, setSelectedOrder] = useState(null);
-    const [isModalVisible, setIsModalVisible] = useState(false);
+    const [orders, setOrders] = useState([]);
+    const [loading, setLoading] = useState(true);
+    const [selectedOrder, setSelectedOrder] = useState(null);
+    const [isModalVisible, setIsModalVisible] = useState(false);
 
-    useEffect(() => {
-        const fetchOrders = async () => {
-            setLoading(true);
-            try {
-                const response = await getUserOrders();
-                if (response.success) {
-                    setOrders(response.data);
-                }
-            } catch (error) {
-                message.error('Không thể tải lịch sử đơn hàng.');
-            } finally {
-                setLoading(false);
-            }
-        };
-        fetchOrders();
-    // Sửa lỗi 3: Thiếu dependency array []
-    }, []);
+    const gold = '#C5A059';
+    const darkNavy = '#001529';
 
-    const handleCancelOrder = async (orderId) => {
-        try {
-            const response = await cancelOrder(orderId);
-            if (response.success) {
-                message.success('Hủy đơn hàng thành công.');
-                setOrders(orders.map(o => o.id === orderId ? {...o, status: 'CANCELLED' } : o));
-            } else {
-                message.error(response.message);
-            }
-        } catch (error) {
-            // Sửa lỗi 4: Dùng || thay vì |
-            message.error(error.response?.data?.message || 'Không thể hủy đơn hàng.');
-        }
-    };
+    useEffect(() => {
+        const fetchOrders = async () => {
+            setLoading(true);
+            try {
+                const response = await getUserOrders();
+                if (response.success) {
+                    setOrders(response.data);
+                }
+            } catch (error) {
+                message.error('Không thể tải lịch sử đơn hàng.');
+            } finally {
+                setLoading(false);
+            }
+        };
+        fetchOrders();
+    }, []);
 
-    const showOrderDetails = (order) => {
-        setSelectedOrder(order);
-        setIsModalVisible(true);
-    };
+    const handleCancelOrder = (orderId) => {
+        Modal.confirm({
+            title: 'Xác nhận hủy đơn hàng',
+            content: 'Bạn có chắc chắn muốn hủy đơn hàng này không? Hành động này không thể hoàn tác.',
+            okText: 'Xác nhận hủy',
+            okType: 'danger',
+            cancelText: 'Quay lại',
+            onOk: async () => {
+                try {
+                    const response = await cancelOrder(orderId);
+                    if (response.success) {
+                        message.success('Hủy đơn hàng thành công.');
+                        setOrders(orders.map(o => o.id === orderId ? { ...o, status: 'CANCELLED' } : o));
+                    }
+                } catch (error) {
+                    message.error(error.response?.data?.message || 'Không thể hủy đơn hàng.');
+                }
+            }
+        });
+    };
 
-    const getStatusTag = (status) => {
-        switch (status) {
-            case 'PENDING': return <Tag color="gold">Chờ xác nhận</Tag>;
-            case 'CONFIRMED': return <Tag color="blue">Đã xác nhận</Tag>;
-            case 'SHIPPING': return <Tag color="cyan">Đang giao</Tag>;
-            case 'DELIVERED': return <Tag color="green">Đã giao</Tag>;
-            case 'CANCELLED': return <Tag color="red">Đã hủy</Tag>;
-            default: return <Tag>{status}</Tag>;
-        }
-    };
+  const getStatusInfo = (status) => {
+    const statusMap = {
+        'PENDING': { color: 'gold', text: 'Chờ xác nhận', icon: <ClockCircleOutlined /> },
+        'CONFIRMED': { color: 'blue', text: 'Đã xác nhận', icon: <ShoppingOutlined /> },
+        'SHIPPING': { color: 'cyan', text: 'Đang giao hàng', icon: <TruckOutlined /> },
+        'DELIVERED': { color: 'green', text: 'Đã hoàn thành', icon: <CheckCircleOutlined /> },
+        'CANCELLED': { color: 'red', text: 'Đã hủy', icon: <CloseCircleOutlined /> }
+    };
+    return statusMap[status] || { color: 'default', text: status, icon: null };
+};
 
-    // Sửa lỗi 5: Khai báo columns bị thiếu hoàn toàn
-    const columns = [
-        { title: 'Mã Đơn Hàng', dataIndex: 'id', key: 'id', render: (id) => `#${id}` },
-        { title: 'Ngày Đặt', dataIndex: 'createdAt', key: 'createdAt', render: (text) => dayjs(text).format('DD/MM/YYYY HH:mm') },
-        { title: 'Tổng Tiền', dataIndex: 'totalAmount', key: 'totalAmount', render: (text) => formatCurrency(text) },
-        { title: 'Trạng Thái', dataIndex: 'status', key: 'status', render: (status) => getStatusTag(status) },
+    const columns = [
+        { 
+            title: 'MÃ ĐƠN', 
+            dataIndex: 'id', 
+            key: 'id', 
+            render: (id) => <Text strong style={{ color: gold }}>#{id}</Text> 
+        },
+        { 
+            title: 'NGÀY ĐẶT', 
+            dataIndex: 'createdAt', 
+            key: 'createdAt', 
+            render: (text) => <Text type="secondary">{dayjs(text).format('DD/MM/YYYY HH:mm')}</Text> 
+        },
+        { 
+            title: 'TỔNG TIỀN', 
+            dataIndex: 'totalAmount', 
+            key: 'totalAmount', 
+            render: (text) => <Text strong>{formatCurrency(text)}</Text> 
+        },
+        { 
+            title: 'TRẠNG THÁI', 
+            dataIndex: 'status', 
+            key: 'status', 
+            render: (status) => {
+                const info = getStatusInfo(status);
+                return <Tag icon={info.icon} color={info.color} style={{ borderRadius: 0, padding: '2px 10px' }}>{info.text.toUpperCase()}</Tag>;
+            }
+        },
         {
-            title: 'Hành Động',
+            title: 'QUẢN LÝ',
             key: 'action',
+            align: 'right',
             render: (_, record) => (
                 <Space size="middle">
-                    <Button onClick={() => showOrderDetails(record)}>Xem Chi Tiết</Button>
-                    {/* Chỉ cho phép hủy khi đơn hàng đang PENDING */}
+                    <Button 
+                        type="text" 
+                        icon={<EyeOutlined />} 
+                        onClick={() => { setSelectedOrder(record); setIsModalVisible(true); }}
+                        style={{ color: darkNavy }}
+                    >
+                        Chi tiết
+                    </Button>
                     {record.status === 'PENDING' && (
-                        <Button danger onClick={() => handleCancelOrder(record.id)}>
-                            Hủy Đơn
+                        <Button 
+                            type="text" 
+                            danger 
+                            icon={<CloseCircleOutlined />} 
+                            onClick={() => handleCancelOrder(record.id)}
+                        >
+                            Hủy đơn
                         </Button>
                     )}
                 </Space>
@@ -87,36 +130,102 @@ const MyOrdersPage = () => {
         },
     ];
 
-    return (
-        <div style={{ padding: '24px' }}>
-            <Title level={2}>Lịch Sử Đơn Hàng</Title>
-            <Spin spinning={loading}>
-                <Table columns={columns} dataSource={orders} rowKey="id" />
-            </Spin>
-            <Modal
-                title={`Chi tiết đơn hàng #${selectedOrder?.id}`}
-                open={isModalVisible} // 'visible' đã cũ, 'open' là thuộc tính mới
-                onCancel={() => setIsModalVisible(false)}
-                // Sửa lỗi 6: footer={} không hợp lệ, dùng footer={null} để ẩn footer
-                footer={null}
-            >
-                {selectedOrder && (
-                    <div>
-                        <p><Text strong>Địa chỉ giao hàng:</Text> {selectedOrder.shippingAddress}</p>
-                        <p><Text strong>Phương thức thanh toán:</Text> {selectedOrder.paymentMethod}</p>
-                        <Title level={5}>Các sản phẩm:</Title>
-                        <ul>
-                            {selectedOrder.items.map(item => (
-                                <li key={item.id}>
-                                    {item.productName} (x{item.quantity}) - {formatCurrency(item.price)}
-                                </li>
-                            ))}
-                        </ul>
-                    </div>
-                )}
-            </Modal>
-        </div>
-    );
+    return (
+        <div style={{ padding: '60px 10%', background: '#fbfbfb', minHeight: '100vh' }}>
+            <div style={{ marginBottom: 40, textAlign: 'center' }}>
+                <Title level={1} style={{ fontFamily: 'Playfair Display, serif', letterSpacing: '4px', marginBottom: 10 }}>
+                    LỊCH SỬ MUA HÀNG
+                </Title>
+                <Text type="secondary">Theo dõi trạng thái và quản lý các đơn hàng trang sức của quý khách</Text>
+            </div>
+
+            <Card bordered={false} style={{ borderRadius: 0, boxShadow: '0 10px 30px rgba(0,0,0,0.03)' }}>
+                <Table 
+                    columns={columns} 
+                    dataSource={orders} 
+                    rowKey="id" 
+                    loading={loading}
+                    pagination={{ pageSize: 8 }}
+                    locale={{ emptyText: <Empty description="Quý khách chưa có đơn hàng nào" /> }}
+                />
+            </Card>
+
+            {/* MODAL CHI TIẾT ĐƠN HÀNG - STYLE HÓA ĐƠN */}
+            <Modal
+                title={null}
+                open={isModalVisible}
+                onCancel={() => setIsModalVisible(false)}
+                footer={[
+                    <Button key="close" onClick={() => setIsModalVisible(false)} style={{ borderRadius: 0 }}>ĐÓNG</Button>
+                ]}
+                width={600}
+                centered
+            >
+                {selectedOrder && (
+                    <div style={{ padding: '20px 10px' }}>
+                        <div style={{ textAlign: 'center', marginBottom: 30 }}>
+                            <Title level={3} style={{ margin: 0, fontFamily: 'Playfair Display' }}>CHI TIẾT ĐƠN HÀNG</Title>
+                            <Text type="secondary">Mã đơn: #{selectedOrder.id}</Text>
+                        </div>
+
+                        <Row gutter={[0, 16]}>
+                            <Col span={12}>
+                                <Text type="secondary">Ngày đặt:</Text><br/>
+                                <Text strong>{dayjs(selectedOrder.createdAt).format('DD/MM/YYYY HH:mm')}</Text>
+                            </Col>
+                            <Col span={12} style={{ textAlign: 'right' }}>
+                                <Text type="secondary">Trạng thái:</Text><br/>
+                                {getStatusInfo(selectedOrder.status).text}
+                            </Col>
+                            <Col span={24}>
+                                <Text type="secondary">Địa chỉ giao hàng:</Text><br/>
+                                <Text strong>{selectedOrder.shippingAddress}</Text>
+                            </Col>
+                            <Col span={24}>
+                                <Text type="secondary">Thanh toán:</Text><br/>
+                                <Text strong>{selectedOrder.paymentMethod === 'COD' ? 'Thanh toán khi nhận hàng' : 'Chuyển khoản QR'}</Text>
+                            </Col>
+                        </Row>
+
+                        <Divider style={{ margin: '24px 0' }}>SẢN PHẨM</Divider>
+
+                        <div style={{ marginBottom: 30 }}>
+                            {selectedOrder.items.map(item => (
+                                <div key={item.id} style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 15 }}>
+                                    <div>
+                                        <Text strong>{item.productName}</Text><br/>
+                                        <Text type="secondary" style={{ fontSize: '12px' }}>Số lượng: {item.quantity}</Text>
+                                    </div>
+                                    <Text>{formatCurrency(item.price * item.quantity)}</Text>
+                                </div>
+                            ))}
+                        </div>
+
+                        <div style={{ background: '#f9f9f9', padding: '20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                            <Title level={4} style={{ margin: 0 }}>TỔNG CỘNG</Title>
+                            <Title level={4} style={{ margin: 0, color: gold }}>{formatCurrency(selectedOrder.totalAmount)}</Title>
+                        </div>
+                    </div>
+                )}
+            </Modal>
+
+            <style>{`
+                .ant-table-thead > tr > th {
+                    background: transparent !important;
+                    border-bottom: 2px solid #f0f0f0 !important;
+                    font-size: 11px !important;
+                    letter-spacing: 2px !important;
+                    color: #888 !important;
+                }
+                .ant-table-row:hover {
+                    background-color: #fdfaf5 !important;
+                }
+                .ant-btn-text:hover {
+                    background-color: rgba(197, 160, 89, 0.1) !important;
+                }
+            `}</style>
+        </div>
+    );
 };
 
 export default MyOrdersPage;

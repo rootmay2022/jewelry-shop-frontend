@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { Layout, BackTop } from 'antd';
-import { Outlet } from 'react-router-dom';
+import { Layout, FloatButton } from 'antd';
+import { Outlet, useLocation } from 'react-router-dom';
 import AppHeader from '../components/common/AppHeader';
 import AppFooter from '../components/common/AppFooter';
 import { VerticalAlignTopOutlined } from '@ant-design/icons';
@@ -9,26 +9,33 @@ const { Content } = Layout;
 
 const MainLayout = () => {
   const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
+  const location = useLocation();
+  const gold = '#C5A059';
 
   useEffect(() => {
     const handleResize = () => setIsMobile(window.innerWidth <= 768);
     window.addEventListener('resize', handleResize);
+    // Tự động cuộn lên đầu trang mỗi khi đổi Route
+    window.scrollTo(0, 0);
     return () => window.removeEventListener('resize', handleResize);
-  }, []);
+  }, [location.pathname]);
+
+  // Kiểm tra xem trang hiện tại có phải là Trang Chủ không để xử lý Header trong suốt
+  const isHomePage = location.pathname === '/';
 
   return (
-    <Layout style={{ minHeight: '100vh', background: '#fff' }}>
-      {/* Header cố định */}
+    <Layout style={{ minHeight: '100vh', background: '#fff', overflowX: 'hidden' }}>
+      {/* Header cố định với Z-Index cao nhất */}
       <AppHeader />
       
       <Content style={{ 
-        marginTop: isMobile ? 56 : 64, // Khớp với chiều cao Header
+        /* Nếu là Trang Chủ: Cho nội dung tràn lên Header (vì Header trong suốt).
+           Nếu là trang khác: Đẩy nội dung xuống bằng chiều cao Header để không bị đè chữ.
+        */
+        marginTop: isHomePage ? 0 : (isMobile ? 70 : 90), 
         background: '#fff',
+        transition: 'margin-top 0.4s ease'
       }}>
-        {/* BỎ CÁI KHUNG TRẮNG (BOX): 
-            Để Outlet tràn ra ngoài giúp Banner và các Section màu Navy 
-            của ní đẹp hơn, không bị lộ viền xám xung quanh.
-        */}
         <div style={{ minHeight: '80vh' }}>
           <Outlet />
         </div>
@@ -36,84 +43,93 @@ const MainLayout = () => {
 
       <AppFooter />
 
-      {/* Nút cuộn lên đầu trang (Back to Top) - Cần thiết cho trang dài */}
-      <BackTop>
-        <div style={{
-          height: 40, width: 40,
-          lineHeight: '40px',
-          borderRadius: '50%',
-          backgroundColor: '#D4AF37',
-          color: '#fff',
-          textAlign: 'center',
-          fontSize: 20,
-          boxShadow: '0 4px 12px rgba(0,0,0,0.15)'
-        }}>
-          <VerticalAlignTopOutlined />
-        </div>
-      </BackTop>
+      {/* Nút cuộn lên đầu trang - Phiên bản AntD mới nhất */}
+      <FloatButton.BackTop 
+        duration={600}
+        visibilityHeight={400}
+        shape="circle"
+        type="default"
+        style={{ right: 24, bottom: 100, backgroundColor: gold, border: 'none' }}
+        icon={<VerticalAlignTopOutlined style={{ color: '#fff' }} />}
+      />
 
-      {/* --- BỘ NÚT LIÊN HỆ GÓC MÀN HÌNH (Đã tân trang) --- */}
+      {/* --- BỘ NÚT LIÊN HỆ GÓC MÀN HÌNH (Luxury Edition) --- */}
       <div className="floating-contact">
-        <a href="https://m.me/ten.dellco.5458" target="_blank" rel="noreferrer" className="contact-btn messenger-btn">
-          <img src="https://upload.wikimedia.org/wikipedia/commons/b/be/Facebook_Messenger_logo_2020.svg" alt="Messenger" />
-          <span className="tooltip-text">Chat với chúng tôi</span>
+        {/* Zalo - Thêm vào cho đủ bộ liên hệ Việt Nam */}
+        <a href="https://zalo.me/0397845954" target="_blank" rel="noreferrer" className="contact-btn zalo-btn">
+          <img src="https://upload.wikimedia.org/wikipedia/commons/9/91/Icon_of_Zalo.svg" alt="Zalo" />
+          <span className="tooltip-text">Zalo: 0397 845 954</span>
         </a>
 
+        {/* Messenger */}
+        <a href="https://m.me/ten.dellco.5458" target="_blank" rel="noreferrer" className="contact-btn messenger-btn">
+          <img src="https://upload.wikimedia.org/wikipedia/commons/b/be/Facebook_Messenger_logo_2020.svg" alt="Messenger" />
+          <span className="tooltip-text">Chat qua Facebook</span>
+        </a>
+
+        {/* Phone */}
         <a href="tel:0397845954" className="contact-btn phone-btn">
           <div className="phone-icon-wrapper">
              <img src="https://cdn-icons-png.flaticon.com/512/724/724664.png" alt="Phone" />
           </div>
-          <span className="tooltip-text">Gọi ngay: 0397845954</span>
+          <span className="tooltip-text">Hotline: 0397 845 954</span>
         </a>
       </div>
 
       <style>{`
-        /* CSS cho bộ nút liên hệ xịn xò */
+        /* Tối ưu hóa mượt mà cho toàn trang */
+        html { scroll-behavior: smooth; }
+
         .floating-contact {
           position: fixed;
           bottom: 30px;
           right: 20px;
-          z-index: 1000;
+          z-index: 999;
           display: flex;
           flex-direction: column;
-          gap: 15px;
+          gap: 12px;
         }
 
         .contact-btn {
-          width: 50px;
-          height: 50px;
+          width: 48px;
+          height: 48px;
           border-radius: 50%;
           display: flex;
           align-items: center;
           justify-content: center;
-          box-shadow: 0 4px 15px rgba(0,0,0,0.2);
-          transition: all 0.3s ease;
+          box-shadow: 0 8px 25px rgba(0,0,0,0.15);
+          transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
           position: relative;
           background: #fff;
+          border: 1px solid #f0f0f0;
         }
 
         .contact-btn img {
-          width: 30px;
-          height: 30px;
+          width: 26px;
+          height: 26px;
+          object-fit: contain;
         }
 
         .contact-btn:hover {
-          transform: scale(1.1);
+          transform: translateY(-5px);
+          box-shadow: 0 12px 30px rgba(0,0,0,0.2);
         }
 
-        /* Tooltip khi rê chuột vào */
         .tooltip-text {
           position: absolute;
           right: 60px;
-          background: #333;
+          background: rgba(0, 0, 0, 0.8);
+          backdrop-filter: blur(4px);
           color: #fff;
-          padding: 5px 15px;
-          border-radius: 4px;
-          font-size: 12px;
+          padding: 6px 15px;
+          border-radius: 20px;
+          font-size: 11px;
+          letter-spacing: 1px;
           white-space: nowrap;
           opacity: 0;
           visibility: hidden;
           transition: 0.3s;
+          border: 1px solid ${gold};
         }
 
         .contact-btn:hover .tooltip-text {
@@ -121,32 +137,22 @@ const MainLayout = () => {
           visibility: visible;
         }
 
-        /* Hiệu ứng rung cho nút điện thoại */
-        .phone-btn {
-          background: #D4AF37; /* Màu Gold */
-        }
-        
-        .phone-btn img {
-          filter: brightness(0) invert(1); /* Chuyển icon sang trắng */
-        }
-
-        .phone-icon-wrapper {
-          animation: phone-shake 1.5s infinite;
-        }
+        .phone-btn { background: #000; border: 1px solid ${gold}; }
+        .phone-btn img { filter: brightness(0) invert(1); }
+        .phone-icon-wrapper { animation: phone-shake 2s infinite; }
 
         @keyframes phone-shake {
           0% { transform: rotate(0); }
-          10% { transform: rotate(15deg); }
-          20% { transform: rotate(-15deg); }
-          30% { transform: rotate(15deg); }
-          40% { transform: rotate(0); }
+          5% { transform: rotate(15deg); }
+          10% { transform: rotate(-15deg); }
+          15% { transform: rotate(15deg); }
+          20% { transform: rotate(0); }
           100% { transform: rotate(0); }
         }
 
-        /* Loại bỏ padding mặc định của Ant Layout */
-        .ant-layout-content {
-          padding: 0 !important;
-        }
+        /* Khử khoảng trắng dư thừa */
+        .ant-layout { background: #fff !important; }
+        .ant-layout-content { padding: 0 !important; width: 100% !important; }
       `}</style>
     </Layout>
   );
