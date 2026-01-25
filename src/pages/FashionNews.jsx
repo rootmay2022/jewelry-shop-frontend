@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { Card, Col, Row, Typography, Skeleton, Button, Space } from 'antd';
-import { getLuxuryNews } from '../api/newsApi'; // Đã đổi sang GNews ở bước trước
+import { Col, Row, Typography, Skeleton, Button, Space, Divider } from 'antd'; // Thêm Divider vào import
+import { getLuxuryNews } from '../api/newsApi';
 
 const { Title, Paragraph, Text } = Typography;
 
@@ -19,12 +19,15 @@ const FashionNewsPage = () => {
             setLoading(true);
             try {
                 const res = await getLuxuryNews();
-                if (res.success) {
-                    // GNews dùng .image và .content/description
+                // Bảo mật dữ liệu: Kiểm tra res và res.data có phải là mảng không
+                if (res && res.success && Array.isArray(res.data)) {
                     setNews(res.data);
+                } else {
+                    setNews([]); // Tránh lỗi null map
                 }
             } catch (error) {
-                console.error("Lỗi:", error);
+                console.error("Lỗi Fetch News:", error);
+                setNews([]);
             } finally {
                 setLoading(false);
             }
@@ -34,7 +37,7 @@ const FashionNewsPage = () => {
 
     return (
         <div style={{ background: '#fff', minHeight: '100vh', paddingBottom: '100px' }}>
-            {/* HERO SECTION */}
+            {/* HERO SECTION - GIỮ NGUYÊN STYLE SANG CHẢNH CỦA NÍ */}
             <div style={{ 
                 padding: '120px 5% 80px', 
                 background: colors.navy, 
@@ -59,7 +62,6 @@ const FashionNewsPage = () => {
                     </Title>
                     <div style={{ width: '100px', height: '1px', background: colors.gold, margin: '0 auto' }}></div>
                 </div>
-                {/* Trang trí nền mờ cho sang */}
                 <div style={{ 
                     position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)',
                     fontSize: '200px', color: 'rgba(212, 175, 55, 0.03)', fontWeight: 900, zIndex: 1, pointerEvents: 'none'
@@ -76,21 +78,21 @@ const FashionNewsPage = () => {
                         ))
                     ) : (
                         news.map((item, index) => (
-                            // Dùng logic index để tạo layout to nhỏ khác nhau cho nghệ thuật
                             <Col xs={24} md={index % 3 === 0 ? 16 : 8} key={index}>
                                 <div 
                                     className="news-item-container"
-                                    onClick={() => window.open(item.url, '_blank')}
+                                    onClick={() => item.url && window.open(item.url, '_blank')}
                                     style={{ cursor: 'pointer', position: 'relative' }}
                                 >
                                     <div style={{ 
                                         height: index % 3 === 0 ? '500px' : '350px', 
                                         overflow: 'hidden',
-                                        marginBottom: '20px',
-                                        boxShadow: '0 20px 40px rgba(0,0,0,0.1)'
+                                        marginBottom: '25px',
+                                        boxShadow: '0 20px 40px rgba(0,0,0,0.08)',
+                                        backgroundColor: '#eee' // Màu nền khi chưa load được ảnh
                                     }}>
                                         <img 
-                                            src={item.image} 
+                                            src={item.image || 'https://via.placeholder.com/800x500?text=Luxury+Jewelry'} 
                                             alt={item.title}
                                             className="news-img-zoom"
                                             style={{ width: '100%', height: '100%', objectFit: 'cover' }}
@@ -100,11 +102,12 @@ const FashionNewsPage = () => {
                                     <div style={{ padding: index % 3 === 0 ? '0 10%' : '0' }}>
                                         <Space style={{ marginBottom: '10px' }}>
                                             <Text style={{ color: colors.gold, fontWeight: 'bold', fontSize: '12px' }}>
-                                                {item.source.name.toUpperCase()}
+                                                {/* Thêm dấu ? để không bị lỗi nếu source null */}
+                                                {item.source?.name?.toUpperCase() || 'LUXURY NEWS'}
                                             </Text>
                                             <Divider type="vertical" />
                                             <Text type="secondary" style={{ fontSize: '11px' }}>
-                                                {new Date(item.publishedAt).toLocaleDateString('vi-VN')}
+                                                {item.publishedAt ? new Date(item.publishedAt).toLocaleDateString('vi-VN') : 'Mới cập nhật'}
                                             </Text>
                                         </Space>
 
@@ -112,7 +115,8 @@ const FashionNewsPage = () => {
                                             fontFamily: '"Playfair Display", serif', 
                                             fontSize: index % 3 === 0 ? '32px' : '22px',
                                             lineHeight: 1.3,
-                                            margin: '0 0 15px'
+                                            margin: '0 0 15px',
+                                            color: colors.navy
                                         }}>
                                             {item.title}
                                         </Title>
@@ -134,41 +138,15 @@ const FashionNewsPage = () => {
 
             <style>{`
                 @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,900;1,400&display=swap');
-
-                .news-item-container:hover .news-img-zoom {
-                    transform: scale(1.05);
-                    transition: transform 1.2s cubic-bezier(0.2, 1, 0.3, 1);
-                }
-
-                .news-img-zoom {
-                    transition: transform 1.2s cubic-bezier(0.2, 1, 0.3, 1);
-                }
-
-                .read-more-btn {
-                    position: relative;
-                    font-weight: bold;
-                    letter-spacing: 1px;
-                }
-
+                .news-item-container:hover .news-img-zoom { transform: scale(1.05); }
+                .news-img-zoom { transition: transform 1.2s cubic-bezier(0.2, 1, 0.3, 1); }
+                .read-more-btn { font-weight: bold; letter-spacing: 1px; }
                 .read-more-btn::after {
-                    content: '';
-                    position: absolute;
-                    bottom: 0;
-                    left: 0;
-                    width: 0;
-                    height: 1px;
-                    background: ${colors.gold};
-                    transition: width 0.3s ease;
+                    content: ''; position: absolute; bottom: 0; left: 0; width: 0; height: 1px;
+                    background: ${colors.gold}; transition: width 0.3s ease;
                 }
-
-                .news-item-container:hover .read-more-btn::after {
-                    width: 100%;
-                }
-
-                .news-item-container:hover h3 {
-                    color: ${colors.gold} !important;
-                    transition: color 0.3s ease;
-                }
+                .news-item-container:hover .read-more-btn::after { width: 100%; }
+                .news-item-container:hover h3 { color: ${colors.gold} !important; transition: color 0.3s ease; }
             `}</style>
         </div>
     );
