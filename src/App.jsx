@@ -9,6 +9,7 @@ import Home from './pages/Home';
 import ProductsPage from './pages/product/ProductsPage';
 import ProductDetailPage from './pages/product/ProductDetailPage';
 import Login from './pages/auth/Login';
+import FashionNewsPage from './pages/FashionNews';
 import Register from './pages/auth/Register';
 
 // Protected User Pages
@@ -49,6 +50,7 @@ function App() {
         <Route path="products" element={<ProductsPage />} />
         <Route path="products/:id" element={<ProductDetailPage />} />
         <Route path="login" element={<Login />} />
+        <Route path="/fashion-news" element={<FashionNewsPage />} />
         <Route path="register" element={<Register />} />
         
         {/* User Protected Routes */}
