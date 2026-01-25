@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { Row, Col, Spin, Input, Pagination, Empty, Typography, Card, Checkbox, Slider, Space, Divider, Button, Drawer } from 'antd';
-import { FilterOutlined } from '@ant-design/icons';
+import { Row, Col, Spin, Input, Pagination, Empty, Typography, Checkbox, Slider, Space, Divider, Button, Drawer } from 'antd';
+import { FilterOutlined, SearchOutlined } from '@ant-design/icons';
 import { getAllProducts, searchProducts } from '../../api/productApi';
 import ProductCard from '../../components/product/ProductCard';
 import formatCurrency from '../../utils/formatCurrency';
@@ -19,31 +19,26 @@ const ProductsPage = () => {
     
     const [filters, setFilters] = useState({ 
         category: null, 
-        priceRange: [0, 1000000000],
+        priceRange: [0, 50000000],
         brand: null 
     });
 
-    // DANH SÁCH THƯƠNG HIỆU NỔI TIẾNG (Dễ dàng mở rộng)
+    const theme = {
+        navy: '#001529',
+        gold: '#D4AF37',
+    };
+
     const brands = useMemo(() => {
         const famousBrands = [
-            // Nước hoa & Mỹ phẩm
-            'Dior', 'Chanel', 'Gucci', 'Hermes', 'Creed', 'Le Labo', 'Tom Ford', 'Killian', 'Roja', 'Parfums de Marly',
-            // Trang sức & Đồng hồ
-            'Cartier', 'Tiffany & Co', 'Bulgari', 'Van Cleef & Arpels', 'Rolex', 'Patek Philippe', 'Hublot', 'Omega',
-            // Thời trang cao cấp
-            'Louis Vuitton', 'Prada', 'Burberry', 'Versace', 'YSL', 'Saint Laurent'
+            'Dior', 'Chanel', 'Gucci', 'Hermes', 'Creed', 'Le Labo', 'Tom Ford', 'Killian', 'Roja',
+            'Cartier', 'Tiffany & Co', 'Bulgari', 'Rolex', 'Hublot', 'Omega', 'Louis Vuitton', 'Versace'
         ];
-        
         const foundBrands = new Set();
         allProducts.forEach(p => {
             famousBrands.forEach(b => {
-                // Kiểm tra xem tên sản phẩm có chứa tên thương hiệu không (không phân biệt hoa thường)
-                if (p.name && p.name.toLowerCase().includes(b.toLowerCase())) {
-                    foundBrands.add(b);
-                }
+                if (p.name && p.name.toLowerCase().includes(b.toLowerCase())) foundBrands.add(b);
             });
         });
-        // Sắp xếp tên thương hiệu theo bảng chữ cái cho chuyên nghiệp
         return Array.from(foundBrands).sort();
     }, [allProducts]);
 
@@ -57,10 +52,8 @@ const ProductsPage = () => {
                     setFilteredProducts(response.data || []);
                 }
             } catch (error) {
-                console.error("Lỗi tải sản phẩm:", error);
-            } finally {
-                setLoading(false);
-            }
+                console.error("Error:", error);
+            } finally { setLoading(false); }
         };
         fetchProducts();
     }, []);
@@ -68,23 +61,11 @@ const ProductsPage = () => {
     useEffect(() => {
         let productsToFilter = [...allProducts];
         
-        if (filters.category) {
-            productsToFilter = productsToFilter.filter(p => 
-                Number(p.categoryId) === Number(filters.category)
-            );
-        }
-
-        if (filters.brand) {
-            productsToFilter = productsToFilter.filter(p => 
-                p.name.toLowerCase().includes(filters.brand.toLowerCase())
-            );
-        }
-
+        if (filters.category) productsToFilter = productsToFilter.filter(p => Number(p.categoryId) === Number(filters.category));
+        if (filters.brand) productsToFilter = productsToFilter.filter(p => p.name.toLowerCase().includes(filters.brand.toLowerCase()));
         if (filters.priceRange) {
             const [min, max] = filters.priceRange;
-            productsToFilter = productsToFilter.filter(p => 
-                Number(p.price) >= min && Number(p.price) <= max
-            );
+            productsToFilter = productsToFilter.filter(p => Number(p.price) >= min && Number(p.price) <= max);
         }
         
         setFilteredProducts(productsToFilter);
@@ -98,143 +79,131 @@ const ProductsPage = () => {
             if (response.success) {
                 setAllProducts(response.data || []);
                 setFilteredProducts(response.data || []);
-                setFilters({ category: null, priceRange: [0, 1000000000], brand: null }); 
+                setFilters({ category: null, priceRange: [0, 50000000], brand: null }); 
             }
-        } catch (error) {
-            console.error("Tìm kiếm thất bại:", error);
-        } finally {
-            setLoading(false);
-        }
+        } catch (error) { console.error(error); } finally { setLoading(false); }
     };
 
-    const paginatedProducts = filteredProducts.slice(
-        (currentPage - 1) * PRODUCTS_PER_PAGE,
-        currentPage * PRODUCTS_PER_PAGE
-    );
+    const paginatedProducts = filteredProducts.slice((currentPage - 1) * PRODUCTS_PER_PAGE, currentPage * PRODUCTS_PER_PAGE);
 
     const FilterContent = () => (
-        <Space direction="vertical" style={{ width: '100%' }}>
-            <Text strong>Danh mục</Text>
-            <Checkbox.Group 
-                style={{ width: '100%' }} 
-                value={filters.category ? [filters.category] : []}
-                onChange={(vals) => setFilters(prev => ({...prev, category: vals[vals.length-1]}))}
-            >
-                <Space direction="vertical">
-                    <Checkbox value={1}>Nước Hoa</Checkbox>
-                    <Checkbox value={2}>Trang Sức</Checkbox>
-                    <Checkbox value={3}>Phụ Kiện</Checkbox>
-                </Space>
-            </Checkbox.Group>
+        <Space direction="vertical" style={{ width: '100%' }} size={20}>
+            <div>
+                <Title level={5} style={{ fontFamily: 'serif', marginBottom: '15px' }}>DANH MỤC</Title>
+                <Checkbox.Group style={{ width: '100%' }} value={filters.category ? [filters.category] : []} onChange={(vals) => setFilters(prev => ({...prev, category: vals[vals.length-1]}))}>
+                    <Space direction="vertical">
+                        <Checkbox value={1}>Nước Hoa</Checkbox>
+                        <Checkbox value={2}>Trang Sức</Checkbox>
+                        <Checkbox value={3}>Phụ Kiện</Checkbox>
+                    </Space>
+                </Checkbox.Group>
+            </div>
 
-            <Divider style={{ margin: '12px 0' }} />
+            <Divider style={{ margin: '0' }} />
             
-            <Text strong>Thương hiệu</Text>
-            <Checkbox.Group 
-                style={{ width: '100%' }} 
-                value={filters.brand ? [filters.brand] : []}
-                onChange={(vals) => setFilters(prev => ({...prev, brand: vals[vals.length-1]}))}
-            >
-                <Space direction="vertical">
-                    {brands.length > 0 ? brands.map(b => (
-                        <Checkbox key={b} value={b}>{b}</Checkbox>
-                    )) : <Text type="secondary" italic>Đang cập nhật...</Text>}
-                </Space>
-            </Checkbox.Group>
+            <div>
+                <Title level={5} style={{ fontFamily: 'serif', marginBottom: '15px' }}>THƯƠNG HIỆU</Title>
+                <Checkbox.Group style={{ width: '100%' }} value={filters.brand ? [filters.brand] : []} onChange={(vals) => setFilters(prev => ({...prev, brand: vals[vals.length-1]}))}>
+                    <Space direction="vertical">
+                        {brands.map(b => <Checkbox key={b} value={b}>{b}</Checkbox>)}
+                    </Space>
+                </Checkbox.Group>
+            </div>
 
-            <Divider style={{ margin: '12px 0' }} />
+            <Divider style={{ margin: '0' }} />
 
-            <Text strong>Khoảng giá (VNĐ)</Text>
-            <Slider
-                range
-                step={1000000}
-                min={0}
-                max={50000000}
-                value={filters.priceRange}
-                onChangeComplete={(val) => setFilters(prev => ({...prev, priceRange: val}))}
-                tooltip={{ formatter: (v) => formatCurrency(v) }}
-            />
-            <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                <Text type="secondary" style={{ fontSize: '12px' }}>0đ</Text>
-                <Text type="secondary" style={{ fontSize: '12px' }}>50tr+</Text>
+            <div>
+                <Title level={5} style={{ fontFamily: 'serif', marginBottom: '15px' }}>KHOẢNG GIÁ</Title>
+                <Slider range step={1000000} min={0} max={50000000} value={filters.priceRange} onChangeComplete={(val) => setFilters(prev => ({...prev, priceRange: val}))} trackStyle={[{ backgroundColor: theme.gold }]} handleStyle={[{ borderColor: theme.gold }, { borderColor: theme.gold }]} />
+                <div style={{ display: 'flex', justifyContent: 'space-between', color: '#999', fontSize: '12px' }}>
+                    <Text>{formatCurrency(filters.priceRange[0])}</Text>
+                    <Text>{formatCurrency(filters.priceRange[1])}</Text>
+                </div>
             </div>
         </Space>
     );
 
     return (
-        <div style={{ padding: '16px' }}>
-            <Title level={2} style={{ textAlign: 'center', marginBottom: '24px' }}>Cửa Hàng</Title>
-            
-            <Row gutter={[16, 16]}>
-                <Col span={24}>
-                    <div style={{ display: 'flex', gap: '8px', marginBottom: '16px' }}>
-                        <Search 
-                            placeholder="Tìm sản phẩm..." 
-                            onSearch={handleSearch} 
-                            enterButton 
-                            style={{ flex: 1 }}
-                        />
-                        <Button 
-                            className="mobile-filter-btn"
-                            icon={<FilterOutlined />} 
-                            onClick={() => setIsDrawerVisible(true)}
-                        />
-                    </div>
-                </Col>
+        <div style={{ minHeight: '100vh', backgroundColor: '#fff' }}>
+            {/* Header Banner */}
+            <div style={{ backgroundColor: theme.navy, padding: '60px 20px', textAlign: 'center', marginBottom: '40px' }}>
+                <Title level={1} style={{ color: theme.gold, fontFamily: '"Playfair Display", serif', fontSize: '48px', margin: 0 }}>
+                    The Collection
+                </Title>
+                <Text style={{ color: '#fff', letterSpacing: '4px', textTransform: 'uppercase', fontSize: '12px' }}>
+                    Discover Luxury & Elegance
+                </Text>
+            </div>
 
-                <Col xs={0} md={6}>
-                    <Card title="Bộ Lọc Tìm Kiếm" variant="outlined">
-                        <FilterContent />
-                    </Card>
-                </Col>
+            <div style={{ maxWidth: '1400px', margin: '0 auto', padding: '0 20px' }}>
+                <Row gutter={[40, 40]}>
+                    {/* Sidebar Filters Desktop */}
+                    <Col xs={0} md={6} lg={5}>
+                        <div style={{ position: 'sticky', top: '100px' }}>
+                            <FilterContent />
+                        </div>
+                    </Col>
 
-                <Col xs={24} md={18}>
-                    {loading ? (
-                        <div style={{ textAlign: 'center', padding: '50px' }}><Spin size="large" /></div>
-                    ) : (
-                        <>
-                            {paginatedProducts.length > 0 ? (
-                                <Row gutter={[12, 12]}>
-                                    {paginatedProducts.map(product => (
-                                        <Col xs={12} sm={12} md={8} lg={6} key={product.id}>
-                                            <ProductCard product={product} />
-                                        </Col>
-                                    ))}
-                                </Row>
-                            ) : (
-                                <Empty description="Không có sản phẩm nào phù hợp." />
-                            )}
-                            
-                            <Pagination
-                                current={currentPage}
-                                pageSize={PRODUCTS_PER_PAGE}
-                                total={filteredProducts.length}
-                                onChange={(p) => setCurrentPage(p)}
-                                style={{ marginTop: 40, textAlign: 'center' }}
-                                hideOnSinglePage
+                    {/* Main Content */}
+                    <Col xs={24} md={18} lg={19}>
+                        {/* Search & Filter Mobile */}
+                        <div style={{ display: 'flex', gap: '15px', marginBottom: '30px', alignItems: 'center' }}>
+                            <Button 
+                                className="mobile-filter-btn" 
+                                icon={<FilterOutlined />} 
+                                onClick={() => setIsDrawerVisible(true)}
+                                size="large"
+                            >
+                                Lọc
+                            </Button>
+                            <Input 
+                                size="large" 
+                                placeholder="Tìm kiếm sản phẩm..." 
+                                prefix={<SearchOutlined style={{ color: '#ccc' }} />} 
+                                style={{ borderRadius: '0', border: '1px solid #ddd' }}
+                                onPressEnter={(e) => handleSearch(e.target.value)}
                             />
-                        </>
-                    )}
-                </Col>
-            </Row>
+                        </div>
 
-            <Drawer
-                title="Bộ lọc sản phẩm"
-                placement="right"
-                onClose={() => setIsDrawerVisible(false)}
-                open={isDrawerVisible}
-            >
+                        {loading ? (
+                            <div style={{ textAlign: 'center', padding: '100px' }}><Spin size="large" /></div>
+                        ) : (
+                            <>
+                                {paginatedProducts.length > 0 ? (
+                                    <Row gutter={[24, 32]}>
+                                        {paginatedProducts.map(product => (
+                                            <Col xs={12} sm={12} md={8} lg={8} xl={6} key={product.id}>
+                                                <ProductCard product={product} />
+                                            </Col>
+                                        ))}
+                                    </Row>
+                                ) : (
+                                    <Empty description={<span style={{ color: '#999' }}>Không tìm thấy sản phẩm phù hợp</span>} />
+                                )}
+                                
+                                <Pagination
+                                    current={currentPage}
+                                    pageSize={PRODUCTS_PER_PAGE}
+                                    total={filteredProducts.length}
+                                    onChange={setCurrentPage}
+                                    style={{ marginTop: 60, textAlign: 'center' }}
+                                    hideOnSinglePage
+                                />
+                            </>
+                        )}
+                    </Col>
+                </Row>
+            </div>
+
+            <Drawer title="BỘ LỌC" placement="right" onClose={() => setIsDrawerVisible(false)} open={isDrawerVisible}>
                 <FilterContent />
             </Drawer>
 
-            <div style={{ height: '100px' }}></div>
-
             <style>{`
-                @media (max-width: 768px) {
-                    .mobile-filter-btn { display: inline-block !important; }
-                }
-                .mobile-filter-btn { display: none; }
+                @media (min-width: 769px) { .mobile-filter-btn { display: none; } }
+                .ant-checkbox-checked .ant-checkbox-inner { background-color: ${theme.navy}; border-color: ${theme.navy}; }
             `}</style>
+            <div style={{ height: '100px' }}></div>
         </div>
     );
 };

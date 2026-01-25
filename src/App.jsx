@@ -9,7 +9,7 @@ import Home from './pages/Home';
 import ProductsPage from './pages/product/ProductsPage';
 import ProductDetailPage from './pages/product/ProductDetailPage';
 import Login from './pages/auth/Login';
-import FashionNewsPage from './pages/FashionNews';
+import FashionNewsPage from './pages/FashionNews'; // ĐÚNG TÊN FILE
 import Register from './pages/auth/Register';
 
 // Protected User Pages
@@ -30,12 +30,11 @@ import UserManagement from './pages/admin/UserManagement';
 import ProtectedRoute from './components/common/ProtectedRoute';
 
 function App() {
-  // Tích hợp con chatbot của đại ca Hùng vào toàn hệ thống
   useEffect(() => {
     if (!window.chatbase || window.chatbase("initialized")) {
       const script = document.createElement("script");
       script.src = "https://www.chatbase.co/embed.min.js";
-      script.id = "Pq4XeB9T51HzjiXChSQcw"; // ID chatbot của ní
+      script.id = "Pq4XeB9T51HzjiXChSQcw";
       script.domain = "www.chatbase.co";
       script.defer = true;
       document.body.appendChild(script);

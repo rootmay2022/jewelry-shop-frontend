@@ -1,7 +1,6 @@
-// src/pages/FashionNews.jsx
 import React, { useState, useEffect } from 'react';
-import { Card, Col, Row, Typography, Tag, Skeleton } from 'antd';
-import { getFashionNews } from '../api/fashionApi'; // Import từ file API mới
+import { Card, Col, Row, Typography, Tag, Skeleton, Divider } from 'antd';
+import { getFashionNews } from '../api/fashionApi'; 
 
 const { Title, Paragraph, Text } = Typography;
 
@@ -12,139 +11,138 @@ const FashionNewsPage = () => {
     useEffect(() => {
         const fetchNews = async () => {
             setLoading(true);
-            const data = await getFashionNews();
-            // Lọc các bài không có ảnh hoặc tiêu đề
-            const filteredData = data.filter(item => item.urlToImage && item.title && item.description);
-            setNews(filteredData);
-            setLoading(false);
+            try {
+                const data = await getFashionNews();
+                // Lọc kỹ hơn: Chỉ lấy bài có ảnh, tiêu đề và nguồn
+                const filteredData = data.filter(item => item.urlToImage && item.title && item.description);
+                setNews(filteredData);
+            } catch (error) {
+                console.error("Lỗi tải tin tức:", error);
+            } finally {
+                setLoading(false);
+            }
         };
         fetchNews();
     }, []);
 
+    // --- LUXURY STYLING ---
+    const colors = {
+        gold: '#D4AF37',
+        navy: '#001529',
+        darkText: '#2c3e50',
+        lightBg: '#f4f6f8'
+    };
+
     const cardStyle = {
-        borderRadius: '8px',
+        borderRadius: '0px', // Vuông vức cho sang
         overflow: 'hidden',
-        boxShadow: '0 4px 12px rgba(0,0,0,0.05)',
-        transition: 'all 0.3s ease',
+        border: 'none',
+        boxShadow: '0 10px 30px rgba(0,0,0,0.08)',
+        transition: 'all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275)', // Hiệu ứng nảy nhẹ
         cursor: 'pointer',
         height: '100%',
         display: 'flex',
         flexDirection: 'column',
-        justifyContent: 'space-between',
-        // Hiệu ứng hover cho thẻ bài viết
-        '&:hover': {
-            transform: 'translateY(-5px)',
-            boxShadow: '0 8px 24px rgba(0,0,0,0.1)',
-        }
-    };
-
-    const coverImageStyle = {
-        height: 220, // Chiều cao cố định cho ảnh bìa
-        objectFit: 'cover',
-        width: '100%',
-        transition: 'transform 0.5s ease',
-        // Hiệu ứng zoom ảnh khi hover
-        'img:hover': {
-            transform: 'scale(1.05)',
-        }
-    };
-
-    const titleStyle = {
-        marginTop: '10px',
-        height: '60px', // Cố định chiều cao tiêu đề để không bị nhảy layout
-        overflow: 'hidden',
-        fontFamily: 'Playfair Display, serif', // Font chữ sang trọng
-        fontWeight: 700,
-        lineHeight: '1.3',
-        color: '#2c3e50', // Màu tối cho tiêu đề
-    };
-
-    const descriptionStyle = {
-        height: '40px', // Cố định chiều cao mô tả
-        overflow: 'hidden',
-        fontSize: '14px',
-        color: '#7f8c8d',
-        marginBottom: '10px',
-    };
-
-    const sourceTagStyle = {
-        backgroundColor: '#D4AF37', // Màu vàng Gold
-        color: '#fff',
-        borderRadius: '3px',
-        fontWeight: 'bold',
-        marginBottom: '8px',
-        display: 'inline-block', // Để tag nằm riêng
-    };
-
-    const dateStyle = {
-        fontSize: '12px',
-        color: '#95a5a6',
-        display: 'block',
-        marginTop: 'auto', // Đẩy ngày xuống cuối card
+        background: '#fff',
     };
 
     return (
-        <div style={{ padding: '60px', background: '#f8f8f8', minHeight: '100vh' }}>
-            <Title level={1} style={{ 
-                textAlign: 'center', 
-                fontFamily: 'Playfair Display, serif', 
-                fontWeight: 900,
-                fontSize: '48px',
-                color: '#2c3e50',
-                marginBottom: '60px',
-                letterSpacing: '2px',
-                textTransform: 'uppercase'
-            }}>
-                💎 THẾ GIỚI THỜI TRANG & TRANG SỨC CAO CẤP
-            </Title>
+        <div style={{ padding: '80px 5%', background: colors.lightBg, minHeight: '100vh' }}>
+            {/* HEADER */}
+            <div style={{ textAlign: 'center', marginBottom: '80px' }}>
+                <Text style={{ color: colors.gold, letterSpacing: '4px', fontWeight: '600', textTransform: 'uppercase' }}>
+                    Luxury Lifestyle & Trends
+                </Text>
+                <Title level={1} style={{ 
+                    fontFamily: '"Playfair Display", serif', 
+                    fontSize: '56px', 
+                    color: colors.navy,
+                    margin: '10px 0 20px',
+                    fontWeight: 900
+                }}>
+                    THE EDITORIAL
+                </Title>
+                <div style={{ width: '80px', height: '4px', backgroundColor: colors.gold, margin: '0 auto' }}></div>
+            </div>
             
-            <Row gutter={[40, 40]} justify="center">
+            <Row gutter={[40, 60]}>
                 {loading ? (
-                    Array.from({ length: 9 }).map((_, i) => ( // Hiển thị 9 Skeleton khi đang tải
-                        <Col xs={24} sm={12} md={8} lg={8} key={i}>
-                            <Card style={cardStyle} bordered={false}>
-                                <Skeleton.Image style={{ height: 220, width: '100%' }} />
-                                <Card.Meta 
-                                    title={<Skeleton paragraph={{ rows: 2 }} active />} 
-                                    description={<Skeleton paragraph={{ rows: 1 }} active />} 
-                                />
-                                <Skeleton.Input style={{ width: '60px', marginTop: '10px' }} active />
+                    Array.from({ length: 6 }).map((_, i) => (
+                        <Col xs={24} sm={12} md={8} key={i}>
+                            <Card style={cardStyle}>
+                                <Skeleton.Image style={{ height: 260, width: '100%' }} />
+                                <Skeleton active paragraph={{ rows: 3 }} style={{ padding: 20 }} />
                             </Card>
                         </Col>
                     ))
                 ) : (
                     news.map((item, index) => (
-                        <Col xs={24} sm={12} md={8} lg={8} key={index}>
-                            <Card
-                                hoverable
-                                style={cardStyle}
-                                bordered={false}
-                                cover={
-                                    <div style={{ height: 220, overflow: 'hidden' }}>
-                                        <img 
-                                            alt="fashion" 
-                                            src={item.urlToImage} 
-                                            style={coverImageStyle} 
-                                        />
+                        <Col xs={24} sm={12} md={8} key={index}>
+                            <div className="news-card-wrapper" style={{ height: '100%' }}>
+                                <Card
+                                    hoverable
+                                    style={cardStyle}
+                                    bodyStyle={{ padding: '25px', flex: 1, display: 'flex', flexDirection: 'column' }}
+                                    cover={
+                                        <div style={{ height: 260, overflow: 'hidden', position: 'relative' }}>
+                                            <div style={{ 
+                                                position: 'absolute', top: 15, left: 15, zIndex: 2, 
+                                                backgroundColor: colors.navy, color: '#fff', 
+                                                padding: '4px 12px', fontSize: '10px', fontWeight: 'bold', letterSpacing: '1px' 
+                                            }}>
+                                                {item.source.name.toUpperCase()}
+                                            </div>
+                                            <img 
+                                                alt="fashion" 
+                                                src={item.urlToImage} 
+                                                style={{ 
+                                                    width: '100%', height: '100%', objectFit: 'cover',
+                                                    transition: 'transform 0.8s ease'
+                                                }}
+                                                className="news-image"
+                                            />
+                                        </div>
+                                    }
+                                    onClick={() => window.open(item.url, '_blank')}
+                                >
+                                    <Text style={{ color: '#999', fontSize: '12px', letterSpacing: '1px', display: 'block', marginBottom: '10px' }}>
+                                        {new Date(item.publishedAt).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' }).toUpperCase()}
+                                    </Text>
+                                    
+                                    <Title level={4} style={{ 
+                                        fontFamily: '"Playfair Display", serif', 
+                                        fontSize: '22px', 
+                                        color: colors.navy,
+                                        lineHeight: '1.4',
+                                        height: '62px',
+                                        overflow: 'hidden',
+                                        margin: '0 0 15px'
+                                    }}>
+                                        {item.title}
+                                    </Title>
+                                    
+                                    <Paragraph style={{ color: '#666', fontSize: '15px', lineHeight: '1.6', flex: 1 }} ellipsis={{ rows: 3 }}>
+                                        {item.description}
+                                    </Paragraph>
+                                    
+                                    <div style={{ marginTop: '20px', borderTop: '1px solid #eee', paddingTop: '15px' }}>
+                                        <Text style={{ color: colors.gold, fontWeight: 'bold', fontSize: '13px', display: 'flex', alignItems: 'center' }}>
+                                            READ FULL STORY <span style={{ marginLeft: '5px' }}>→</span>
+                                        </Text>
                                     </div>
-                                }
-                                onClick={() => window.open(item.url, '_blank')}
-                            >
-                                <Tag style={sourceTagStyle}>{item.source.name}</Tag>
-                                <Title level={4} style={titleStyle}>{item.title}</Title>
-                                <Paragraph style={descriptionStyle}>
-                                    {item.description}
-                                </Paragraph>
-                                <Text style={dateStyle}>
-                                    {new Date(item.publishedAt).toLocaleDateString('vi-VN', { 
-                                        year: 'numeric', month: 'long', day: 'numeric' 
-                                    })}
-                                </Text>
-                            </Card>
+                                </Card>
+                            </div>
                         </Col>
                     ))
                 )}
             </Row>
+            
+            {/* CSS nội bộ để xử lý hover ảnh */}
+            <style>{`
+                .ant-card-cover img { transform-origin: center; }
+                .ant-card:hover .news-image { transform: scale(1.1) !important; }
+                .ant-card:hover { transform: translateY(-10px) !important; box-shadow: 0 20px 40px rgba(0,0,0,0.12) !important; }
+            `}</style>
         </div>
     );
 };
