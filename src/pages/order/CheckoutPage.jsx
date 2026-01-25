@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { Row, Col, Card, Form, Input, Radio, Button, Typography, Spin, App, Modal, Switch, Divider, Badge } from 'antd';
+// FIX LỖI: Đã thêm Space vào danh sách import bên dưới
+import { Row, Col, Card, Form, Input, Radio, Button, Typography, Spin, App, Modal, Switch, Divider, Badge, Space } from 'antd';
 import { useNavigate } from 'react-router-dom';
 import { ShoppingBag, CreditCard, Truck, Building2, ShieldCheck, ReceiptText } from 'lucide-react';
 import { useCart } from '../../context/CartContext';
@@ -65,8 +66,12 @@ const CheckoutPage = () => {
             okText: 'Tôi đã hoàn tất thanh toán',
             cancelText: 'Quay lại',
             onOk: async () => {
-                await clearCart();
-                navigate(`/order-success/${order.id}`);
+                try {
+                    await clearCart();
+                    navigate(`/order-success/${order.id}`);
+                } catch (err) {
+                    navigate(`/order-success/${order.id}`);
+                }
             }
         });
     };
@@ -77,7 +82,7 @@ const CheckoutPage = () => {
             const orderPayload = {
                 ...values,
                 userId: user?.id,
-                totalAmount: cart.totalAmount,
+                totalAmount: cart?.totalAmount || 0,
                 isVAT: isCompany,
                 items: cart.items.map(item => ({
                     productId: item.id || item.productId,
@@ -97,36 +102,43 @@ const CheckoutPage = () => {
                 }
             }
         } catch (error) {
+            console.error("Checkout Error:", error);
             message.error(error.response?.data?.message || 'Có lỗi xảy ra khi đặt hàng.');
         } finally {
             setLoading(false);
         }
     };
 
-    if (!cart || cart.items.length === 0) return null;
+    if (!cart || cart.items.length === 0) {
+        return (
+            <div style={{ textAlign: 'center', padding: '100px' }}>
+                <Spin size="large" />
+                <Paragraph style={{ marginTop: 20 }}>Đang kiểm tra túi hàng...</Paragraph>
+            </div>
+        );
+    }
 
     return (
         <div style={{ backgroundColor: '#f4f4f4', minHeight: '100vh', padding: '40px 0' }}>
             <div style={{ maxWidth: '1200px', margin: '0 auto', padding: '0 20px' }}>
                 <div style={{ marginBottom: '30px' }}>
                     <Title level={2} style={{ fontFamily: 'Playfair Display', letterSpacing: '2px' }}>CHECKOUT</Title>
-                    <Text type="secondary"><ShoppingBag size={14} /> Túi hàng của bạn đang được chuẩn bị để giao đi</Text>
+                    <Text type="secondary"><ShoppingBag size={14} style={{ verticalAlign: 'middle', marginRight: 5 }} /> Túi hàng của bạn đang được chuẩn bị để giao đi</Text>
                 </div>
 
                 <Form form={form} layout="vertical" onFinish={onFinish}>
                     <Row gutter={[32, 32]}>
-                        {/* CỘT TRÁI: THÔNG TIN */}
                         <Col xs={24} lg={14}>
                             <Card bordered={false} className="checkout-card">
-                                <Title level={4} style={{ marginBottom: 25 }}><Truck size={20} style={{ marginRight: 10 }} /> Thông tin giao hàng</Title>
+                                <Title level={4} style={{ marginBottom: 25 }}><Truck size={20} style={{ marginRight: 10, verticalAlign: 'middle' }} /> Thông tin giao hàng</Title>
                                 <Row gutter={16}>
                                     <Col span={12}>
-                                        <Form.Item name="fullName" label="HỌ TÊN NGƯỜI NHẬN" rules={[{ required: true }]}>
+                                        <Form.Item name="fullName" label="HỌ TÊN NGƯỜI NHẬN" rules={[{ required: true, message: 'Vui lòng nhập họ tên' }]}>
                                             <Input size="large" className="luxury-input" />
                                         </Form.Item>
                                     </Col>
                                     <Col span={12}>
-                                        <Form.Item name="phone" label="SỐ ĐIỆN THOẠI" rules={[{ required: true }]}>
+                                        <Form.Item name="phone" label="SỐ ĐIỆN THOẠI" rules={[{ required: true, message: 'Vui lòng nhập số điện thoại' }]}>
                                             <Input size="large" className="luxury-input" />
                                         </Form.Item>
                                     </Col>
@@ -139,13 +151,12 @@ const CheckoutPage = () => {
                                     </div>
                                 </div>
 
-                                <Form.Item name="shippingAddress" label="ĐỊA CHỈ CHI TIẾT" rules={[{ required: true }]}>
+                                <Form.Item name="shippingAddress" label="ĐỊA CHỈ CHI TIẾT" rules={[{ required: true, message: 'Vui lòng nhập địa chỉ' }]}>
                                     <TextArea rows={3} className="luxury-input" placeholder="Số nhà, tòa nhà, tên đường..." />
                                 </Form.Item>
 
                                 <Divider />
 
-                                {/* HÓA ĐƠN CÔNG TY */}
                                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
                                     <span>
                                         <Building2 size={18} style={{ marginRight: 10, verticalAlign: 'middle' }} />
@@ -170,7 +181,7 @@ const CheckoutPage = () => {
 
                                 <Divider />
 
-                                <Title level={4} style={{ marginBottom: 25 }}><CreditCard size={20} style={{ marginRight: 10 }} /> Phương thức thanh toán</Title>
+                                <Title level={4} style={{ marginBottom: 25 }}><CreditCard size={20} style={{ marginRight: 10, verticalAlign: 'middle' }} /> Phương thức thanh toán</Title>
                                 <Form.Item name="paymentMethod" initialValue="COD">
                                     <Radio.Group className="luxury-radio-group">
                                         <Radio.Button value="COD">THANH TOÁN KHI NHẬN HÀNG (COD)</Radio.Button>
@@ -180,21 +191,20 @@ const CheckoutPage = () => {
                             </Card>
                         </Col>
 
-                        {/* CỘT PHẢI: HÓA ĐƠN TÓM TẮT */}
                         <Col xs={24} lg={10}>
                             <Card bordered={false} className="receipt-card">
                                 <Title level={4} style={{ textAlign: 'center', letterSpacing: '3px' }}>
-                                    <ReceiptText style={{ marginBottom: -5 }} /> ĐƠN HÀNG
+                                    <ReceiptText size={20} style={{ marginBottom: -5, marginRight: 8 }} /> ĐƠN HÀNG
                                 </Title>
                                 <Divider />
                                 <div className="receipt-items">
                                     {cart.items.map(item => (
                                         <div key={item.id} className="receipt-item">
-                                            <div>
+                                            <div style={{ flex: 1, paddingRight: 10 }}>
                                                 <Text strong style={{ display: 'block' }}>{item.productName}</Text>
                                                 <Text type="secondary" style={{ fontSize: '12px' }}>Số lượng: {item.quantity}</Text>
                                             </div>
-                                            <Text strong>{formatCurrency(item.subtotal)}</Text>
+                                            <Text strong>{formatCurrency(item.price * item.quantity)}</Text>
                                         </div>
                                     ))}
                                 </div>
@@ -224,13 +234,15 @@ const CheckoutPage = () => {
                                         marginTop: '30px', 
                                         borderRadius: 0, 
                                         letterSpacing: '2px',
-                                        fontWeight: 'bold'
+                                        fontWeight: 'bold',
+                                        border: 'none'
                                     }}
                                 >
                                     {paymentMethod === 'BANK_TRANSFER' ? 'XÁC NHẬN & HIỂN THỊ MÃ QR' : 'HOÀN TẤT ĐẶT HÀNG'}
                                 </Button>
 
                                 <div style={{ textAlign: 'center', marginTop: 20 }}>
+                                    {/* Component Space đã chạy tốt vì đã được import */}
                                     <Space style={{ color: '#888', fontSize: '12px' }}>
                                         <ShieldCheck size={14} /> Giao dịch bảo mật 256-bit
                                     </Space>
@@ -246,9 +258,7 @@ const CheckoutPage = () => {
                 .receipt-card { border-radius: 0; background: #fff; border-top: 4px solid ${gold}; box-shadow: 0 10px 30px rgba(0,0,0,0.1); }
                 .luxury-input { border-radius: 0 !important; border: 1px solid #d9d9d9; padding: 10px 15px; }
                 .luxury-input:focus { border-color: ${gold} !important; box-shadow: none !important; }
-                
-                .receipt-item { display: flex; justify-content: space-between; margin-bottom: 15px; }
-                
+                .receipt-item { display: flex; justify-content: space-between; margin-bottom: 15px; align-items: flex-start; }
                 .luxury-radio-group { width: 100%; display: flex; flex-direction: column; gap: 10px; }
                 .luxury-radio-group .ant-radio-button-wrapper { 
                     width: 100% !important; 
