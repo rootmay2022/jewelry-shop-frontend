@@ -3,7 +3,6 @@ import { Carousel, Typography, Row, Col, Spin, Grid, Button, Divider, Space } fr
 import { useNavigate } from 'react-router-dom';
 import { getAllProducts } from '../api/productApi';
 import { getLuxuryNews } from '../api/newsApi'; 
-
 import ProductCard from '../components/product/ProductCard';
 import { ArrowRightOutlined, EnvironmentOutlined } from '@ant-design/icons';
 
@@ -23,7 +22,6 @@ const Home = () => {
         darkGray: '#141414'
     };
 
-    // Dữ liệu dự phòng nếu API News bị lỗi (Bảo hiểm để không bị đen màn hình)
     const backupNews = {
         title: "Kỷ Nguyên Mới Của Trang Sức Cao Cấp",
         description: "Khám phá những thiết kế tinh xảo và đẳng cấp nhất trong bộ sưu tập mới nhất mùa này.",
@@ -38,9 +36,13 @@ const Home = () => {
                 // 1. Lấy sản phẩm
                 const prodResponse = await getAllProducts();
                 const prodData = prodResponse?.data || prodResponse;
-                if (Array.isArray(prodData)) setProducts(prodData);
+                if (Array.isArray(prodData)) {
+                    setProducts(prodData);
+                } else {
+                    setProducts([]);
+                }
 
-                // 2. Lấy tin tức (Bọc trong try-catch riêng để nếu news lỗi thì sản phẩm vẫn hiện)
+                // 2. Lấy tin tức (Xử lý riêng để tránh lỗi lan truyền)
                 try {
                     const newsResponse = await getLuxuryNews();
                     if (newsResponse?.success && newsResponse?.data?.length > 0) {
@@ -49,10 +51,11 @@ const Home = () => {
                         setMainNews(backupNews);
                     }
                 } catch (newsError) {
+                    console.warn("Lỗi News, dùng dữ liệu dự phòng");
                     setMainNews(backupNews);
                 }
             } catch (error) {
-                console.error("Lỗi đồng bộ dữ liệu:", error);
+                console.error("Lỗi tổng thể Home:", error);
             } finally {
                 setLoading(false);
             }
@@ -121,7 +124,7 @@ const Home = () => {
                 )}
             </div>
 
-            {/* 3. TIN TỨC - DÙNG OPTIONAL CHAINING ĐỂ TRÁNH LỖI */}
+            {/* 3. TIN TỨC */}
             <div style={{ padding: '100px 10%', backgroundColor: colors.darkGray }}>
                 <Divider style={{ borderColor: colors.gold, color: colors.gold, fontSize: '20px', fontFamily: 'serif' }}>THE EDITORIAL</Divider>
                 {mainNews ? (
@@ -159,7 +162,12 @@ const Home = () => {
                     <div style={{ textAlign: 'center', padding: '100px' }}><Spin size="large" tip="Loading Luxury News..." /></div>
                 )}
             </div>
-            {/* Map section giữ nguyên... */}
+
+            {/* MAP SECTION - Ní giữ nguyên phần này của ní nhé */}
+            <div style={{ padding: '100px 10%', background: colors.navy, textAlign: 'center' }}>
+                <Title level={2} style={{ color: colors.gold, fontFamily: 'serif' }}>Visit Our Boutique</Title>
+                <Text style={{ color: '#fff' }}><EnvironmentOutlined /> 123 Luxury Street, Ho Chi Minh City</Text>
+            </div>
         </div>
     );
 };

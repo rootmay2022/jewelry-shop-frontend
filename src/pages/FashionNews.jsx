@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Col, Row, Typography, Skeleton, Button, Space, Divider } from 'antd'; // Thêm Divider vào import
+import { Col, Row, Typography, Skeleton, Button, Space, Divider } from 'antd';
 import { getLuxuryNews } from '../api/newsApi';
 
 const { Title, Paragraph, Text } = Typography;
@@ -19,11 +19,11 @@ const FashionNewsPage = () => {
             setLoading(true);
             try {
                 const res = await getLuxuryNews();
-                // Bảo mật dữ liệu: Kiểm tra res và res.data có phải là mảng không
+                // Kiểm tra res và res.data để tránh lỗi map
                 if (res && res.success && Array.isArray(res.data)) {
                     setNews(res.data);
                 } else {
-                    setNews([]); // Tránh lỗi null map
+                    setNews([]); 
                 }
             } catch (error) {
                 console.error("Lỗi Fetch News:", error);
@@ -37,7 +37,7 @@ const FashionNewsPage = () => {
 
     return (
         <div style={{ background: '#fff', minHeight: '100vh', paddingBottom: '100px' }}>
-            {/* HERO SECTION - GIỮ NGUYÊN STYLE SANG CHẢNH CỦA NÍ */}
+            {/* HERO SECTION */}
             <div style={{ 
                 padding: '120px 5% 80px', 
                 background: colors.navy, 
@@ -89,7 +89,7 @@ const FashionNewsPage = () => {
                                         overflow: 'hidden',
                                         marginBottom: '25px',
                                         boxShadow: '0 20px 40px rgba(0,0,0,0.08)',
-                                        backgroundColor: '#eee' // Màu nền khi chưa load được ảnh
+                                        backgroundColor: '#eee' 
                                     }}>
                                         <img 
                                             src={item.image || 'https://via.placeholder.com/800x500?text=Luxury+Jewelry'} 
@@ -102,7 +102,6 @@ const FashionNewsPage = () => {
                                     <div style={{ padding: index % 3 === 0 ? '0 10%' : '0' }}>
                                         <Space style={{ marginBottom: '10px' }}>
                                             <Text style={{ color: colors.gold, fontWeight: 'bold', fontSize: '12px' }}>
-                                                {/* Thêm dấu ? để không bị lỗi nếu source null */}
                                                 {item.source?.name?.toUpperCase() || 'LUXURY NEWS'}
                                             </Text>
                                             <Divider type="vertical" />
@@ -140,7 +139,7 @@ const FashionNewsPage = () => {
                 @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,900;1,400&display=swap');
                 .news-item-container:hover .news-img-zoom { transform: scale(1.05); }
                 .news-img-zoom { transition: transform 1.2s cubic-bezier(0.2, 1, 0.3, 1); }
-                .read-more-btn { font-weight: bold; letter-spacing: 1px; }
+                .read-more-btn { font-weight: bold; letter-spacing: 1px; position: relative; }
                 .read-more-btn::after {
                     content: ''; position: absolute; bottom: 0; left: 0; width: 0; height: 1px;
                     background: ${colors.gold}; transition: width 0.3s ease;
