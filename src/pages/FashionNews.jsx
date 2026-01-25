@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { Card, Col, Row, Typography, Tag, Skeleton, Divider } from 'antd';
-import { getFashionNews } from '../api/fashionApi'; 
+import { Card, Col, Row, Typography, Skeleton, Button, Space } from 'antd';
+import { getLuxuryNews } from '../api/newsApi'; // Đã đổi sang GNews ở bước trước
 
 const { Title, Paragraph, Text } = Typography;
 
@@ -8,16 +8,23 @@ const FashionNewsPage = () => {
     const [news, setNews] = useState([]);
     const [loading, setLoading] = useState(true);
 
+    const colors = {
+        gold: '#D4AF37',
+        navy: '#001529',
+        offWhite: '#fafafa'
+    };
+
     useEffect(() => {
         const fetchNews = async () => {
             setLoading(true);
             try {
-                const data = await getFashionNews();
-                // Lọc kỹ hơn: Chỉ lấy bài có ảnh, tiêu đề và nguồn
-                const filteredData = data.filter(item => item.urlToImage && item.title && item.description);
-                setNews(filteredData);
+                const res = await getLuxuryNews();
+                if (res.success) {
+                    // GNews dùng .image và .content/description
+                    setNews(res.data);
+                }
             } catch (error) {
-                console.error("Lỗi tải tin tức:", error);
+                console.error("Lỗi:", error);
             } finally {
                 setLoading(false);
             }
@@ -25,123 +32,143 @@ const FashionNewsPage = () => {
         fetchNews();
     }, []);
 
-    // --- LUXURY STYLING ---
-    const colors = {
-        gold: '#D4AF37',
-        navy: '#001529',
-        darkText: '#2c3e50',
-        lightBg: '#f4f6f8'
-    };
-
-    const cardStyle = {
-        borderRadius: '0px', // Vuông vức cho sang
-        overflow: 'hidden',
-        border: 'none',
-        boxShadow: '0 10px 30px rgba(0,0,0,0.08)',
-        transition: 'all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275)', // Hiệu ứng nảy nhẹ
-        cursor: 'pointer',
-        height: '100%',
-        display: 'flex',
-        flexDirection: 'column',
-        background: '#fff',
-    };
-
     return (
-        <div style={{ padding: '80px 5%', background: colors.lightBg, minHeight: '100vh' }}>
-            {/* HEADER */}
-            <div style={{ textAlign: 'center', marginBottom: '80px' }}>
-                <Text style={{ color: colors.gold, letterSpacing: '4px', fontWeight: '600', textTransform: 'uppercase' }}>
-                    Luxury Lifestyle & Trends
-                </Text>
-                <Title level={1} style={{ 
-                    fontFamily: '"Playfair Display", serif', 
-                    fontSize: '56px', 
-                    color: colors.navy,
-                    margin: '10px 0 20px',
-                    fontWeight: 900
-                }}>
-                    THE EDITORIAL
-                </Title>
-                <div style={{ width: '80px', height: '4px', backgroundColor: colors.gold, margin: '0 auto' }}></div>
+        <div style={{ background: '#fff', minHeight: '100vh', paddingBottom: '100px' }}>
+            {/* HERO SECTION */}
+            <div style={{ 
+                padding: '120px 5% 80px', 
+                background: colors.navy, 
+                textAlign: 'center',
+                marginBottom: '60px',
+                position: 'relative',
+                overflow: 'hidden'
+            }}>
+                <div style={{ position: 'relative', zIndex: 2 }}>
+                    <Text style={{ color: colors.gold, letterSpacing: '6px', fontSize: '14px', textTransform: 'uppercase' }}>
+                        The World of Elegance
+                    </Text>
+                    <Title level={1} style={{ 
+                        fontFamily: '"Playfair Display", serif', 
+                        fontSize: 'clamp(40px, 8vw, 80px)', 
+                        color: '#fff',
+                        margin: '20px 0',
+                        fontWeight: 400,
+                        fontStyle: 'italic'
+                    }}>
+                        L’Éditorial News
+                    </Title>
+                    <div style={{ width: '100px', height: '1px', background: colors.gold, margin: '0 auto' }}></div>
+                </div>
+                {/* Trang trí nền mờ cho sang */}
+                <div style={{ 
+                    position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)',
+                    fontSize: '200px', color: 'rgba(212, 175, 55, 0.03)', fontWeight: 900, zIndex: 1, pointerEvents: 'none'
+                }}>LUXURY</div>
             </div>
-            
-            <Row gutter={[40, 60]}>
-                {loading ? (
-                    Array.from({ length: 6 }).map((_, i) => (
-                        <Col xs={24} sm={12} md={8} key={i}>
-                            <Card style={cardStyle}>
-                                <Skeleton.Image style={{ height: 260, width: '100%' }} />
-                                <Skeleton active paragraph={{ rows: 3 }} style={{ padding: 20 }} />
-                            </Card>
-                        </Col>
-                    ))
-                ) : (
-                    news.map((item, index) => (
-                        <Col xs={24} sm={12} md={8} key={index}>
-                            <div className="news-card-wrapper" style={{ height: '100%' }}>
-                                <Card
-                                    hoverable
-                                    style={cardStyle}
-                                    bodyStyle={{ padding: '25px', flex: 1, display: 'flex', flexDirection: 'column' }}
-                                    cover={
-                                        <div style={{ height: 260, overflow: 'hidden', position: 'relative' }}>
-                                            <div style={{ 
-                                                position: 'absolute', top: 15, left: 15, zIndex: 2, 
-                                                backgroundColor: colors.navy, color: '#fff', 
-                                                padding: '4px 12px', fontSize: '10px', fontWeight: 'bold', letterSpacing: '1px' 
-                                            }}>
-                                                {item.source.name.toUpperCase()}
-                                            </div>
-                                            <img 
-                                                alt="fashion" 
-                                                src={item.urlToImage} 
-                                                style={{ 
-                                                    width: '100%', height: '100%', objectFit: 'cover',
-                                                    transition: 'transform 0.8s ease'
-                                                }}
-                                                className="news-image"
-                                            />
-                                        </div>
-                                    }
+
+            <div style={{ maxWidth: '1400px', margin: '0 auto', padding: '0 20px' }}>
+                <Row gutter={[40, 80]}>
+                    {loading ? (
+                        Array.from({ length: 6 }).map((_, i) => (
+                            <Col xs={24} md={12} lg={8} key={i}>
+                                <Skeleton active paragraph={{ rows: 4 }} />
+                            </Col>
+                        ))
+                    ) : (
+                        news.map((item, index) => (
+                            // Dùng logic index để tạo layout to nhỏ khác nhau cho nghệ thuật
+                            <Col xs={24} md={index % 3 === 0 ? 16 : 8} key={index}>
+                                <div 
+                                    className="news-item-container"
                                     onClick={() => window.open(item.url, '_blank')}
+                                    style={{ cursor: 'pointer', position: 'relative' }}
                                 >
-                                    <Text style={{ color: '#999', fontSize: '12px', letterSpacing: '1px', display: 'block', marginBottom: '10px' }}>
-                                        {new Date(item.publishedAt).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' }).toUpperCase()}
-                                    </Text>
-                                    
-                                    <Title level={4} style={{ 
-                                        fontFamily: '"Playfair Display", serif', 
-                                        fontSize: '22px', 
-                                        color: colors.navy,
-                                        lineHeight: '1.4',
-                                        height: '62px',
+                                    <div style={{ 
+                                        height: index % 3 === 0 ? '500px' : '350px', 
                                         overflow: 'hidden',
-                                        margin: '0 0 15px'
+                                        marginBottom: '20px',
+                                        boxShadow: '0 20px 40px rgba(0,0,0,0.1)'
                                     }}>
-                                        {item.title}
-                                    </Title>
-                                    
-                                    <Paragraph style={{ color: '#666', fontSize: '15px', lineHeight: '1.6', flex: 1 }} ellipsis={{ rows: 3 }}>
-                                        {item.description}
-                                    </Paragraph>
-                                    
-                                    <div style={{ marginTop: '20px', borderTop: '1px solid #eee', paddingTop: '15px' }}>
-                                        <Text style={{ color: colors.gold, fontWeight: 'bold', fontSize: '13px', display: 'flex', alignItems: 'center' }}>
-                                            READ FULL STORY <span style={{ marginLeft: '5px' }}>→</span>
-                                        </Text>
+                                        <img 
+                                            src={item.image} 
+                                            alt={item.title}
+                                            className="news-img-zoom"
+                                            style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                                        />
                                     </div>
-                                </Card>
-                            </div>
-                        </Col>
-                    ))
-                )}
-            </Row>
-            
-            {/* CSS nội bộ để xử lý hover ảnh */}
+
+                                    <div style={{ padding: index % 3 === 0 ? '0 10%' : '0' }}>
+                                        <Space style={{ marginBottom: '10px' }}>
+                                            <Text style={{ color: colors.gold, fontWeight: 'bold', fontSize: '12px' }}>
+                                                {item.source.name.toUpperCase()}
+                                            </Text>
+                                            <Divider type="vertical" />
+                                            <Text type="secondary" style={{ fontSize: '11px' }}>
+                                                {new Date(item.publishedAt).toLocaleDateString('vi-VN')}
+                                            </Text>
+                                        </Space>
+
+                                        <Title level={3} style={{ 
+                                            fontFamily: '"Playfair Display", serif', 
+                                            fontSize: index % 3 === 0 ? '32px' : '22px',
+                                            lineHeight: 1.3,
+                                            margin: '0 0 15px'
+                                        }}>
+                                            {item.title}
+                                        </Title>
+
+                                        <Paragraph style={{ color: '#666', fontSize: '16px', lineHeight: 1.8 }} ellipsis={{ rows: 2 }}>
+                                            {item.description}
+                                        </Paragraph>
+
+                                        <Button type="link" className="read-more-btn" style={{ padding: 0, color: colors.navy }}>
+                                            XEM CHI TIẾT →
+                                        </Button>
+                                    </div>
+                                </div>
+                            </Col>
+                        ))
+                    )}
+                </Row>
+            </div>
+
             <style>{`
-                .ant-card-cover img { transform-origin: center; }
-                .ant-card:hover .news-image { transform: scale(1.1) !important; }
-                .ant-card:hover { transform: translateY(-10px) !important; box-shadow: 0 20px 40px rgba(0,0,0,0.12) !important; }
+                @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,900;1,400&display=swap');
+
+                .news-item-container:hover .news-img-zoom {
+                    transform: scale(1.05);
+                    transition: transform 1.2s cubic-bezier(0.2, 1, 0.3, 1);
+                }
+
+                .news-img-zoom {
+                    transition: transform 1.2s cubic-bezier(0.2, 1, 0.3, 1);
+                }
+
+                .read-more-btn {
+                    position: relative;
+                    font-weight: bold;
+                    letter-spacing: 1px;
+                }
+
+                .read-more-btn::after {
+                    content: '';
+                    position: absolute;
+                    bottom: 0;
+                    left: 0;
+                    width: 0;
+                    height: 1px;
+                    background: ${colors.gold};
+                    transition: width 0.3s ease;
+                }
+
+                .news-item-container:hover .read-more-btn::after {
+                    width: 100%;
+                }
+
+                .news-item-container:hover h3 {
+                    color: ${colors.gold} !important;
+                    transition: color 0.3s ease;
+                }
             `}</style>
         </div>
     );

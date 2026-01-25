@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { Carousel, Typography, Row, Col, Spin, Grid, Button, Divider } from 'antd';
-import { useNavigate } from 'react-router-dom'; // QUAN TRỌNG: Để chuyển trang
+import { Carousel, Typography, Row, Col, Spin, Grid, Button, Divider, Space } from 'antd';
+import { useNavigate } from 'react-router-dom';
 import { getAllProducts } from '../api/productApi';
+import { getLuxuryNews } from '../api/newsApi'; 
 
 import ProductCard from '../components/product/ProductCard';
 import { ArrowRightOutlined, EnvironmentOutlined } from '@ant-design/icons';
@@ -11,9 +12,10 @@ const { useBreakpoint } = Grid;
 
 const Home = () => {
     const [products, setProducts] = useState([]);
+    const [mainNews, setMainNews] = useState(null); 
     const [loading, setLoading] = useState(true);
     const screens = useBreakpoint();
-    const navigate = useNavigate(); // Hook điều hướng
+    const navigate = useNavigate();
 
     const colors = {
         navy: '#001529',
@@ -22,17 +24,24 @@ const Home = () => {
     };
 
     useEffect(() => {
-        const fetchProducts = async () => {
+        const fetchAllData = async () => {
+            setLoading(true);
             try {
-                const response = await getAllProducts();
-                // Xử lý an toàn dữ liệu trả về
-                const data = response.data || response;
-                if (Array.isArray(data)) setProducts(data);
+                const prodResponse = await getAllProducts();
+                const prodData = prodResponse.data || prodResponse;
+                if (Array.isArray(prodData)) setProducts(prodData);
+
+                const newsResponse = await getLuxuryNews();
+                if (newsResponse.success && newsResponse.data.length > 0) {
+                    setMainNews(newsResponse.data[0]); 
+                }
             } catch (error) {
-                console.error("Failed:", error);
-            } finally { setLoading(false); }
+                console.error("Lỗi đồng bộ dữ liệu:", error);
+            } finally {
+                setLoading(false);
+            }
         };
-        fetchProducts();
+        fetchAllData();
     }, []);
 
     const banners = [
@@ -44,15 +53,15 @@ const Home = () => {
     return (
         <div className="home-page" style={{ backgroundColor: colors.navy }}>
             
-            {/* 1. BANNER SECTION */}
+            {/* 1. BANNER SECTION - GIỮ NGUYÊN LAYOUT CỦA NÍ */}
             <div style={{ width: '100%', overflow: 'hidden' }}>
                 <Carousel autoplay effect="fade">
                     {banners.map((url, index) => (
                         <div key={index}>
                             <div style={{ 
                                 width: '100%', 
-                                height: screens.md ? '600px' : '300px', // Tăng chiều cao banner lên xíu cho đẹp
-                                backgroundImage: `linear-gradient(to bottom, rgba(0,21,41,0.3), rgba(0,21,41,0.9)), url(${url})`,
+                                height: screens.md ? '650px' : '400px', 
+                                backgroundImage: `linear-gradient(to bottom, rgba(0,21,41,0.2), rgba(0,21,41,0.8)), url(${url})`,
                                 backgroundSize: 'cover',
                                 backgroundPosition: 'center',
                                 display: 'flex',
@@ -60,8 +69,8 @@ const Home = () => {
                                 justifyContent: 'center'
                             }}>
                                 <div style={{ textAlign: 'center', color: '#fff' }}>
-                                    <Text style={{ color: colors.gold, letterSpacing: '6px', fontSize: '14px', textTransform: 'uppercase' }}>Exclusively For You</Text>
-                                    <Title style={{ color: '#fff', fontSize: screens.md ? '64px' : '32px', marginTop: '15px', fontFamily: '"Playfair Display", serif' }}>
+                                    <Text style={{ color: colors.gold, letterSpacing: '6px', fontWeight: 'bold' }}>EXCLUSIVELY FOR YOU</Text>
+                                    <Title style={{ color: '#fff', fontSize: screens.md ? '72px' : '36px', marginTop: '15px', fontFamily: '"Playfair Display", serif' }}>
                                         LUXURY JEWELRY
                                     </Title>
                                     <Button 
@@ -73,12 +82,10 @@ const Home = () => {
                                             borderColor: colors.gold, 
                                             color: colors.gold,
                                             borderRadius: '0',
-                                            marginTop: '20px',
-                                            height: '50px',
-                                            padding: '0 40px',
-                                            fontSize: '16px'
+                                            marginTop: '30px',
+                                            height: '55px',
+                                            padding: '0 50px'
                                         }}
-                                        className="banner-btn"
                                     >
                                         DISCOVER COLLECTION
                                     </Button>
@@ -90,16 +97,16 @@ const Home = () => {
             </div>
 
             {/* 2. SẢN PHẨM MỚI NHẤT */}
-            <div style={{ padding: screens.md ? '100px 10%' : '50px 20px' }}>
+            <div style={{ padding: '100px 10%', background: colors.navy }}>
                 <div style={{ textAlign: 'center', marginBottom: '60px' }}>
-                    <Text style={{ color: '#fff', opacity: 0.6, letterSpacing: '2px' }}>NEW ARRIVALS</Text>
-                    <Title level={2} style={{ color: colors.gold, fontFamily: '"Playfair Display", serif', fontSize: '42px', marginTop: '10px' }}>
+                    <Title level={2} style={{ color: colors.gold, fontFamily: '"Playfair Display", serif', fontSize: '42px' }}>
                         The Masterpiece
                     </Title>
+                    <div style={{ width: '60px', height: '2px', background: colors.gold, margin: '20px auto' }}></div>
                 </div>
                 
                 {loading ? (
-                    <div style={{ textAlign: 'center' }}><Spin size="large" /></div>
+                    <div style={{ textAlign: 'center', padding: '50px' }}><Spin size="large" /></div>
                 ) : (
                     <Row gutter={[32, 32]}>
                         {products.slice(0, 4).map(product => (
@@ -109,79 +116,71 @@ const Home = () => {
                         ))}
                     </Row>
                 )}
-                <div style={{ textAlign: 'center', marginTop: '60px' }}>
-                    <Button 
-                        type="link" 
-                        onClick={() => navigate('/products')}
-                        style={{ color: colors.gold, fontSize: '16px', borderBottom: `1px solid ${colors.gold}`, paddingBottom: '5px', borderRadius: 0 }}
-                    >
-                        VIEW ALL COLLECTIONS <ArrowRightOutlined />
-                    </Button>
-                </div>
             </div>
 
-            {/* 3. TIN TỨC THỜI TRANG (ĐÃ GẮN LINK) */}
+            {/* 3. TIN TỨC - TRẢ LẠI ĐÚNG GIAO DIỆN SANG CHẢNH NÍ MUỐN */}
             <div style={{ padding: '100px 10%', backgroundColor: colors.darkGray }}>
-                <Divider style={{ borderColor: colors.gold, color: colors.gold, fontSize: '20px', fontFamily: 'serif' }}>FASHION EDITORIAL</Divider>
-                <Row gutter={[60, 40]} align="middle">
-                    <Col xs={24} md={12}>
-                        <div style={{ overflow: 'hidden', border: `1px solid ${colors.gold}`, padding: '10px' }}>
-                            <img 
-                                src="https://images.unsplash.com/photo-1515562141207-7a88fb7ce338?q=80&w=1000" 
-                                alt="news" 
-                                style={{ width: '100%', filter: 'sepia(0.2) contrast(1.1)', display: 'block' }}
-                            />
-                        </div>
-                    </Col>
-                    <Col xs={24} md={12}>
-                        <Text style={{ color: colors.gold, letterSpacing: '2px', fontWeight: 'bold' }}>MAGAZINE | JAN 2026</Text>
-                        <Title level={1} style={{ color: '#fff', fontFamily: '"Playfair Display", serif', fontSize: '48px', margin: '20px 0' }}>
-                            Sự trỗi dậy của <br/> Kim cương nhân tạo
-                        </Title>
-                        <Paragraph style={{ color: '#aaa', fontSize: '18px', lineHeight: '1.8', marginBottom: '40px' }}>
-                            Khám phá cách các nhà mốt hàng đầu thế giới đang tái định nghĩa lại sự xa xỉ bằng những vật liệu bền vững nhưng vẫn giữ trọn nét tinh tế và đẳng cấp vượt thời gian.
-                        </Paragraph>
-                        <Button 
-                            onClick={() => navigate('/fashion-news')} // CHUYỂN TRANG Ở ĐÂY
-                            style={{ 
-                                backgroundColor: colors.gold, 
-                                color: colors.navy,
-                                border: 'none', 
-                                borderRadius: 0, 
-                                height: '54px', 
-                                padding: '0 40px', 
-                                fontWeight: 'bold',
-                                fontSize: '16px',
-                                letterSpacing: '1px'
-                            }}
-                        >
-                            ĐỌC BÀI VIẾT
-                        </Button>
-                    </Col>
-                </Row>
+                <Divider style={{ borderColor: colors.gold, color: colors.gold, fontSize: '20px', fontFamily: 'serif' }}>
+                    THE EDITORIAL
+                </Divider>
+                
+                {mainNews ? (
+                    <Row gutter={[60, 40]} align="middle">
+                        <Col xs={24} md={12}>
+                            <div style={{ border: `1px solid ${colors.gold}`, padding: '15px' }}>
+                                <img 
+                                    src={mainNews.image} 
+                                    alt="luxury-news" 
+                                    style={{ width: '100%', height: '450px', objectFit: 'cover' }}
+                                />
+                            </div>
+                        </Col>
+                        <Col xs={24} md={12}>
+                            <Space direction="vertical" size={20}>
+                                <Text style={{ color: colors.gold, letterSpacing: '3px', fontWeight: 'bold' }}>
+                                    LATEST | {new Date(mainNews.publishedAt).toLocaleDateString('vi-VN')}
+                                </Text>
+                                <Title level={1} style={{ color: '#fff', fontFamily: '"Playfair Display", serif', fontSize: '40px', lineHeight: 1.2 }}>
+                                    {mainNews.title}
+                                </Title>
+                                <Paragraph style={{ color: '#ccc', fontSize: '17px', lineHeight: '1.8' }} ellipsis={{ rows: 3 }}>
+                                    {mainNews.description}
+                                </Paragraph>
+                                <Button 
+                                    onClick={() => navigate('/fashion-news')} 
+                                    style={{ 
+                                        backgroundColor: colors.gold, color: colors.navy, border: 'none', 
+                                        borderRadius: 0, height: '54px', padding: '0 40px', fontWeight: 'bold'
+                                    }}
+                                >
+                                    ĐỌC BÀI VIẾT
+                                </Button>
+                            </Space>
+                        </Col>
+                    </Row>
+                ) : (
+                    <div style={{ textAlign: 'center', padding: '100px' }}><Spin size="large" tip="Loading Luxury News..." /></div>
+                )}
             </div>
 
-            {/* 4. VỊ TRÍ CỬA HÀNG (MAP THẬT) */}
+            {/* 4. BOUTIQUE MAP - GIỮ NGUYÊN */}
             <div style={{ padding: '100px 10%', backgroundColor: colors.navy }}>
                 <Row gutter={[60, 32]} align="middle">
                     <Col xs={24} md={10}>
                         <Title level={2} style={{ color: colors.gold, fontFamily: '"Playfair Display", serif' }}>
                             <EnvironmentOutlined /> OUR BOUTIQUE
                         </Title>
-                        <Paragraph style={{ color: '#fff', fontSize: '16px', marginTop: '30px', lineHeight: '2' }}>
-                            <b style={{ color: colors.gold }}>ĐỊA CHỈ:</b> Số 123 Tràng Tiền, Hoàn Kiếm, Hà Nội<br/>
-                            <b style={{ color: colors.gold }}>HOTLINE:</b> 1900 8888<br/>
-                            <b style={{ color: colors.gold }}>GIỜ MỞ CỬA:</b> 09:00 - 21:00 (Hàng ngày)
+                        <Paragraph style={{ color: '#fff', fontSize: '16px', marginTop: '30px', lineHeight: '2.2' }}>
+                            <Text style={{ color: colors.gold }}>ĐỊA CHỈ:</Text> Số 123 Tràng Tiền, Hoàn Kiếm, Hà Nội<br/>
+                            <Text style={{ color: colors.gold }}>HOTLINE:</Text> 1900 8888<br/>
+                            <Text style={{ color: colors.gold }}>GIỜ MỞ CỬA:</Text> 09:00 - 21:00
                         </Paragraph>
-                        <Button ghost style={{ color: colors.gold, borderColor: colors.gold, borderRadius: 0, marginTop: '20px', height: '45px' }}>
-                            XEM BẢN ĐỒ CHI TIẾT
-                        </Button>
                     </Col>
                     <Col xs={24} md={14}>
-                        {/* Map Tràng Tiền Plaza thật */}
-                        <div style={{ width: '100%', height: '400px', filter: 'grayscale(1) invert(0.9) opacity(0.8)', border: `1px solid ${colors.gold}` }}>
+                        <div style={{ width: '100%', height: '400px', border: `1px solid ${colors.gold}`, filter: 'grayscale(1) invert(0.9)' }}>
                             <iframe 
-                                src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3724.096472252643!2d105.85222031533215!3d21.028825093152747!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x3135ab953357c995%3A0x1babf6bb4f9a20e!2zVHLDoG5nIFRp4buBbiBQbGF6YQ!5e0!3m2!1svi!2s!4v1647852345678!5m2!1svi!2s" 
+                                title="map"
+                                src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3724.126484373468!2d105.852445!3d21.027732!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x3135ab953357c963%3A0x1c713f0d51f93056!2zVHLDoG5nIFRp4buNbiBQbGF6YQ!5e0!3m2!1svi!2svn!4v1700000000000" 
                                 width="100%" height="100%" style={{ border: 0 }} allowFullScreen="" loading="lazy">
                             </iframe>
                         </div>

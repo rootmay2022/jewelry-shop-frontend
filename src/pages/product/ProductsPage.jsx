@@ -19,7 +19,7 @@ const ProductsPage = () => {
     
     const [filters, setFilters] = useState({ 
         category: null, 
-        priceRange: [0, 50000000],
+        priceRange: [0, 2000000000],
         brand: null 
     });
 
@@ -114,7 +114,7 @@ const ProductsPage = () => {
 
             <div>
                 <Title level={5} style={{ fontFamily: 'serif', marginBottom: '15px' }}>KHOẢNG GIÁ</Title>
-                <Slider range step={1000000} min={0} max={50000000} value={filters.priceRange} onChangeComplete={(val) => setFilters(prev => ({...prev, priceRange: val}))} trackStyle={[{ backgroundColor: theme.gold }]} handleStyle={[{ borderColor: theme.gold }, { borderColor: theme.gold }]} />
+                <Slider range step={1000000} min={0} max={2000000000} value={filters.priceRange} onChangeComplete={(val) => setFilters(prev => ({...prev, priceRange: val}))} trackStyle={[{ backgroundColor: theme.gold }]} handleStyle={[{ borderColor: theme.gold }, { borderColor: theme.gold }]} />
                 <div style={{ display: 'flex', justifyContent: 'space-between', color: '#999', fontSize: '12px' }}>
                     <Text>{formatCurrency(filters.priceRange[0])}</Text>
                     <Text>{formatCurrency(filters.priceRange[1])}</Text>
@@ -208,4 +208,4 @@ const ProductsPage = () => {
     );
 };
 
-export default ProductsPage;
+export default ProductsPage;filters
