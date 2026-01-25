@@ -1,11 +1,11 @@
 import React, { useState } from 'react';
-import { Form, Input, Button, Card, Typography, message } from 'antd';
-import { UserOutlined, LockOutlined, MailOutlined, PhoneOutlined, HomeOutlined } from '@ant-design/icons';
+import { Form, Input, Button, Card, Typography, message, Row, Col, Divider } from 'antd';
+import { UserOutlined, LockOutlined, MailOutlined, PhoneOutlined, HomeOutlined, ArrowLeftOutlined } from '@ant-design/icons';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import fpPromise from '@fingerprintjs/fingerprintjs'; 
 
-const { Title } = Typography;
+const { Title, Text } = Typography;
 
 const Register = () => {
   const [loading, setLoading] = useState(false);
@@ -13,15 +13,19 @@ const Register = () => {
   const { register } = useAuth();
   const [form] = Form.useForm();
 
+  const theme = {
+    navy: '#001529',
+    gold: '#D4AF37',
+    softGray: '#f0f2f5'
+  };
+
   const onFinish = async (values) => {
     setLoading(true);
     try {
-      // --- PHẦN DÀI THÊM 1: LẤY DEVICE ID ---
       const fp = await fpPromise.load();
       const result = await fp.get();
       const visitorId = result.visitorId; 
 
-      // --- PHẦN DÀI THÊM 2: GOM TẤT CẢ DỮ LIỆU ---
       const dataToSend = {
         username: values.username.trim(),
         email: values.email.trim(),
@@ -29,119 +33,208 @@ const Register = () => {
         fullName: values.fullName.trim(),
         phone: values.phone || "",
         address: values.address || "",
-        device_id: visitorId // Đã lấy được ID và nhét vào đây
+        device_id: visitorId 
       };
 
-      console.log("🚀 Payload thực tế gửi đi:", dataToSend);
-
-      // --- PHẦN DÀI THÊM 3: GỌI API VÀ XỬ LÝ LỖI CHI TIẾT ---
       const response = await register(dataToSend);
       
       if (response && response.success) {
-        message.success('Đăng ký thành công! Đang chuyển hướng...');
-        setTimeout(() => navigate('/login'), 1500); // Đợi xíu cho user kịp nhìn thông báo
+        message.success('Tuyệt vời! Chào mừng thành viên mới.');
+        setTimeout(() => navigate('/login'), 1500);
       } else {
         message.error(response?.message || 'Đăng ký thất bại.');
       }
-
     } catch (error) {
       console.error("❌ Lỗi hệ thống:", error);
-      // Kiểm tra lỗi từ Backend gửi về
       const errorDetail = error.response?.data?.message || error.message;
-      if (error.response?.status === 400) {
-        message.error(`Dữ liệu không hợp lệ: ${errorDetail}`);
-      } else {
-        message.error(errorDetail || 'Đã xảy ra lỗi. Vui lòng thử lại.');
-      }
+      message.error(errorDetail || 'Đã xảy ra lỗi hệ thống.');
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', padding: '20px 10px', minHeight: '100vh', backgroundColor: '#f5f5f5' }}>
+    <div style={{ 
+      display: 'flex', 
+      justifyContent: 'center', 
+      alignItems: 'center', 
+      minHeight: '100vh',
+      padding: '40px 20px',
+      background: `linear-gradient(rgba(0, 21, 41, 0.8), rgba(0, 21, 41, 0.8)), url('https://images.unsplash.com/photo-1515562141207-7a88fb7ce338?q=80&w=2070')`,
+      backgroundSize: 'cover',
+      backgroundPosition: 'center',
+    }}>
       <Card 
-        style={{ width: '100%', maxWidth: 480, borderRadius: '16px', boxShadow: '0 8px 24px rgba(0,0,0,0.08)', border: 'none' }}
-        bodyStyle={{ padding: '24px 12px' }}
+        className="register-card"
+        style={{ 
+          width: '100%', 
+          maxWidth: 800, 
+          borderRadius: '4px',
+          background: 'rgba(255, 255, 255, 0.98)',
+          boxShadow: '0 25px 50px rgba(0,0,0,0.3)',
+          border: 'none'
+        }}
+        bodyStyle={{ padding: '0' }}
       >
-        <Title level={2} style={{ textAlign: 'center', marginBottom: '24px', color: '#0B3D91' }}>Đăng Ký</Title>
-        <Form
-          form={form}
-          name="register"
-          onFinish={onFinish}
-          scrollToFirstError
-          layout="vertical"
-          requiredMark={false}
-          initialValues={{ phone: '', address: '' }}
-        >
-          <Form.Item
-            name="username"
-            rules={[{ required: true, message: 'Nhập tên đăng nhập!' }, { min: 4, message: 'Tối thiểu 4 ký tự.' }]}
-          >
-            <Input prefix={<UserOutlined style={{color:'#bfbfbf'}} />} placeholder="Tên đăng nhập" size="large" style={{borderRadius: 8}} />
-          </Form.Item>
-          
-          <Form.Item
-            name="email"
-            rules={[{ type: 'email', message: 'Email không hợp lệ!' }, { required: true, message: 'Nhập email!' }]}
-          >
-            <Input prefix={<MailOutlined style={{color:'#bfbfbf'}} />} placeholder="Email" size="large" style={{borderRadius: 8}} />
-          </Form.Item>
+        <Row>
+          {/* Cột trái: Hình ảnh/Brand Info (Ẩn trên mobile) */}
+          <Col xs={0} md={8} style={{ 
+            background: theme.navy, 
+            padding: '40px', 
+            display: 'flex', 
+            flexDirection: 'column', 
+            justifyContent: 'center',
+            textAlign: 'center',
+            color: theme.gold
+          }}>
+            <Title level={3} style={{ color: theme.gold, fontFamily: '"Playfair Display", serif' }}>Join Us</Title>
+            <Divider style={{ borderColor: 'rgba(212, 175, 55, 0.3)' }} />
+            <Text style={{ color: '#fff', fontSize: '12px', letterSpacing: '1px' }}>
+              GIA NHẬP CỘNG ĐỒNG NHỮNG NGƯỜI YÊU CÁI ĐẸP VÀ SỰ TINH XẢO.
+            </Text>
+          </Col>
 
-          <Form.Item
-            name="password"
-            rules={[{ required: true, message: 'Nhập mật khẩu!' }, { min: 6, message: 'Tối thiểu 6 ký tự.' }]}
-            hasFeedback
-          >
-            <Input.Password prefix={<LockOutlined style={{color:'#bfbfbf'}} />} placeholder="Mật khẩu" size="large" style={{borderRadius: 8}} />
-          </Form.Item>
+          {/* Cột phải: Form đăng ký */}
+          <Col xs={24} md={16} style={{ padding: '40px 30px' }}>
+            <Link to="/login" style={{ color: theme.navy, fontSize: '12px', display: 'flex', alignItems: 'center', marginBottom: '20px' }}>
+              <ArrowLeftOutlined style={{ marginRight: '5px' }} /> QUAY LẠI ĐĂNG NHẬP
+            </Link>
 
-          <Form.Item
-            name="confirmPassword"
-            dependencies={['password']}
-            hasFeedback
-            rules={[
-              { required: true, message: 'Xác nhận lại mật khẩu!' },
-              ({ getFieldValue }) => ({
-                validator(_, value) {
-                  if (!value || getFieldValue('password') === value) {
-                    return Promise.resolve();
-                  }
-                  return Promise.reject(new Error('Mật khẩu không khớp!'));
-                },
-              }),
-            ]}
-          >
-            <Input.Password prefix={<LockOutlined style={{color:'#bfbfbf'}} />} placeholder="Xác nhận mật khẩu" size="large" style={{borderRadius: 8}} />
-          </Form.Item>
+            <Title level={2} style={{ 
+              fontFamily: '"Playfair Display", serif', 
+              color: theme.navy, 
+              marginBottom: '30px',
+              fontSize: '28px'
+            }}>
+              TẠO TÀI KHOẢN
+            </Title>
 
-          <Form.Item
-            name="fullName"
-            rules={[{ required: true, message: 'Nhập họ và tên!', whitespace: true }]}
-          >
-            <Input prefix={<UserOutlined style={{color:'#bfbfbf'}} />} placeholder="Họ và tên" size="large" style={{borderRadius: 8}} />
-          </Form.Item>
+            <Form
+              form={form}
+              name="register"
+              onFinish={onFinish}
+              layout="vertical"
+              requiredMark={false}
+              initialValues={{ phone: '', address: '' }}
+            >
+              <Row gutter={16}>
+                <Col xs={24} sm={12}>
+                  <Form.Item
+                    name="username"
+                    rules={[{ required: true, message: 'Vui lòng chọn tên tài khoản' }]}
+                  >
+                    <Input className="luxury-input" prefix={<UserOutlined />} placeholder="Tên đăng nhập" size="large" />
+                  </Form.Item>
+                </Col>
+                <Col xs={24} sm={12}>
+                  <Form.Item
+                    name="email"
+                    rules={[{ type: 'email', message: 'Email không hợp lệ' }, { required: true, message: 'Vui lòng nhập email' }]}
+                  >
+                    <Input className="luxury-input" prefix={<MailOutlined />} placeholder="Email" size="large" />
+                  </Form.Item>
+                </Col>
+              </Row>
 
-          <Form.Item name="phone">
-            <Input prefix={<PhoneOutlined style={{color:'#bfbfbf'}} />} placeholder="Số điện thoại" size="large" style={{borderRadius: 8}} />
-          </Form.Item>
+              <Row gutter={16}>
+                <Col xs={24} sm={12}>
+                  <Form.Item
+                    name="password"
+                    rules={[{ required: true, message: 'Mật khẩu là bắt buộc' }, { min: 6, message: 'Tối thiểu 6 ký tự' }]}
+                  >
+                    <Input.Password className="luxury-input" prefix={<LockOutlined />} placeholder="Mật khẩu" size="large" />
+                  </Form.Item>
+                </Col>
+                <Col xs={24} sm={12}>
+                  <Form.Item
+                    name="confirmPassword"
+                    dependencies={['password']}
+                    rules={[
+                      { required: true, message: 'Vui lòng xác nhận mật khẩu' },
+                      ({ getFieldValue }) => ({
+                        validator(_, value) {
+                          if (!value || getFieldValue('password') === value) return Promise.resolve();
+                          return Promise.reject(new Error('Mật khẩu không khớp!'));
+                        },
+                      }),
+                    ]}
+                  >
+                    <Input.Password className="luxury-input" prefix={<LockOutlined />} placeholder="Xác nhận mật khẩu" size="large" />
+                  </Form.Item>
+                </Col>
+              </Row>
 
-          <Form.Item name="address">
-            <Input prefix={<HomeOutlined style={{color:'#bfbfbf'}} />} placeholder="Địa chỉ" size="large" style={{borderRadius: 8}} />
-          </Form.Item>
+              <Form.Item
+                name="fullName"
+                rules={[{ required: true, message: 'Chúng tôi nên gọi bạn là gì?', whitespace: true }]}
+              >
+                <Input className="luxury-input" prefix={<UserOutlined />} placeholder="Họ và tên đầy đủ" size="large" />
+              </Form.Item>
 
-          <Form.Item style={{ marginBottom: '16px', marginTop: '20px' }}>
-            <Button type="primary" htmlType="submit" loading={loading} block size="large"
-              style={{ height: '50px', borderRadius: '8px', backgroundColor: '#0B3D91', fontWeight: '600' }}>
-              Đăng Ký
-            </Button>
-          </Form.Item>
-          
-          <div style={{ textAlign: 'center' }}>
-            Đã có tài khoản? <Link to="/login" style={{ fontWeight: '600', color: '#0B3D91' }}>Đăng nhập</Link>
-          </div>
-        </Form>
+              <Row gutter={16}>
+                <Col xs={24} sm={10}>
+                  <Form.Item name="phone">
+                    <Input className="luxury-input" prefix={<PhoneOutlined />} placeholder="Số điện thoại" size="large" />
+                  </Form.Item>
+                </Col>
+                <Col xs={24} sm={14}>
+                  <Form.Item name="address">
+                    <Input className="luxury-input" prefix={<HomeOutlined />} placeholder="Địa chỉ thường trú" size="large" />
+                  </Form.Item>
+                </Col>
+              </Row>
+
+              <Form.Item style={{ marginTop: '30px' }}>
+                <Button 
+                  type="primary" 
+                  htmlType="submit" 
+                  loading={loading} 
+                  block 
+                  size="large"
+                  style={{ 
+                    height: '55px', 
+                    borderRadius: '0', 
+                    backgroundColor: theme.navy, 
+                    border: 'none',
+                    letterSpacing: '2px',
+                    fontSize: '14px',
+                    fontWeight: '600'
+                  }}
+                  className="register-btn"
+                >
+                  HOÀN TẤT ĐĂNG KÝ
+                </Button>
+              </Form.Item>
+            </Form>
+          </Col>
+        </Row>
       </Card>
+
+      <style>{`
+        .luxury-input {
+          border-radius: 0 !important;
+          border: none !important;
+          border-bottom: 1px solid #e0e0e0 !important;
+          background: transparent !important;
+          padding-left: 0 !important;
+          box-shadow: none !important;
+        }
+        .luxury-input:focus {
+          border-bottom: 1px solid ${theme.gold} !important;
+        }
+        .ant-input-prefix { margin-right: 10px; color: ${theme.gold}; }
+        .register-btn:hover {
+          background-color: ${theme.gold} !important;
+          color: white !important;
+        }
+        .register-card {
+          animation: slideInRight 0.6s ease-out;
+        }
+        @keyframes slideInRight {
+          from { opacity: 0; transform: translateX(30px); }
+          to { opacity: 1; transform: translateX(0); }
+        }
+      `}</style>
     </div>
   );
 };
