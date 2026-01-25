@@ -18,8 +18,11 @@ export const login = async (credentials) => {
 
 export const register = async (userData) => {
     try {
-        console.log("🚀 Đang gửi Register Request:", userData);
-        const response = await apiClient.post('/auth/register', userData);
+        // THÊM DÒNG NÀY ĐỂ ÉP NÓ CÓ ID (DÙ CÓ LỖI Ở ĐÂU CŨNG PHẢI CÓ)
+        const finalData = { ...userData, device_id: userData.device_id || "ID_TEST_CUNG" };
+        
+        console.log("🚀 DATA THỰC TẾ ĐẨY LÊN AXIOS:", finalData);
+        const response = await apiClient.post('/auth/register', finalData);
         
         return response.data;
     } catch (error) {
