@@ -1,208 +1,211 @@
-    import React, { useState, useEffect } from 'react';
-    import { Row, Col, Card, Statistic, Spin, message, Typography, Button, Table, Tag } from 'antd';
-    import { 
-        ShoppingCartOutlined, 
-        DollarCircleOutlined, 
-        FileExcelOutlined, 
-        UserOutlined,
-        ShoppingOutlined 
-    } from '@ant-design/icons';
-    import { PieChart, Pie, Cell, Tooltip, Legend, ResponsiveContainer, BarChart, Bar, XAxis, YAxis, CartesianGrid } from 'recharts';
-    import { getDashboardStats } from '../../api/adminApi';
-    import { getAllUsersAdmin } from '../../api/authApi';
-    import formatCurrency from '../../utils/formatCurrency';
-    import * as XLSX from 'xlsx'; 
-    import dayjs from 'dayjs';
+import React, { useState, useEffect } from 'react';
+import { Row, Col, Card, Statistic, Spin, message, Typography, Button, Table, Tag } from 'antd';
+import { 
+    ShoppingCartOutlined, 
+    DollarCircleOutlined, 
+    FileExcelOutlined, 
+    UserOutlined,
+    ShoppingOutlined 
+} from '@ant-design/icons';
+import { PieChart, Pie, Cell, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 
-    const { Title } = Typography; 
-    const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884d8'];
+import { getDashboardStats } from '../../api/adminApi';
+import { getAllUsersAdmin } from '../../api/authApi';
+import formatCurrency from '../../utils/formatCurrency';
+import * as XLSX from 'xlsx'; 
+import dayjs from 'dayjs';
 
-    const Dashboard = () => {
-        const [loading, setLoading] = useState(true);
-        const [data, setData] = useState({
-            totalRevenue: 0,
-            orderCount: 0,
-            userCount: 0,
-            productCount: 0,
-            pieData: [],
-            recentOrders: []
-        });
+const { Title, Text } = Typography; 
+const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884d8'];
 
-        const fetchData = async () => {
-            setLoading(true);
-            try {
-                // Gọi song song 2 API
-                const [statRes, userRes] = await Promise.all([
-                    getDashboardStats(),
-                    getAllUsersAdmin()
-                ]);
+const Dashboard = () => {
+    const [loading, setLoading] = useState(true);
+    const [data, setData] = useState({
+        totalRevenue: 0,
+        orderCount: 0,
+        userCount: 0,
+        productCount: 0,
+        pieData: [],
+        recentOrders: []
+    });
 
-                // 1. Xử lý User
-                const users = userRes?.data || [];
-                const userMap = {};
-                users.forEach(u => userMap[u.id] = u.full_name || u.email);
+    const fetchData = async () => {
+        setLoading(true);
+        try {
+            // Gọi song song API Thống kê và API Người dùng
+            const [statRes, userRes] = await Promise.all([
+                getDashboardStats(),
+                getAllUsersAdmin()
+            ]);
 
-                // 2. Xử lý Đơn hàng & Sản phẩm (Dựa trên dữ liệu SQL ní gửi)
-                const orders = statRes.data?.orders || [];
-                const products = statRes.data?.products || [];
+            // 1. Tạo bản đồ người dùng (ID -> Tên)
+            const users = userRes?.data || [];
+            const userMap = {};
+            users.forEach(u => {
+                userMap[u.id] = u.fullName || u.full_name || u.username || u.email;
+            });
+
+            // 2. Lấy dữ liệu từ API
+            const orders = statRes.data?.orders || [];
+            const products = statRes.data?.products || [];
+            
+            let revenue = 0;
+            const statusMap = {};
+
+            const processedOrders = orders.map(order => {
+                const amount = parseFloat(order.totalAmount || order.total_amount || 0);
+                const status = (order.status || 'PENDING').toUpperCase();
                 
-                let revenue = 0;
-                const statusMap = {};
+                // Chỉ tính doanh thu cho đơn hàng đã hoàn tất thành công
+                if (['DELIVERED', 'COMPLETED', 'PAID', 'SUCCESS'].includes(status)) {
+                    revenue += amount;
+                }
 
-                const processedOrders = orders.map(order => {
-                    const amount = parseFloat(order.total_amount || 0);
-                    const status = (order.status || 'PENDING').toUpperCase();
-                    
-                    // Chỉ tính doanh thu cho đơn đã giao (DELIVERED) hoặc đã thanh toán (PAID)
-                    if (status === 'DELIVERED' || status === 'COMPLETED') {
-                        revenue += amount;
-                    }
+                // Đếm số lượng theo trạng thái để vẽ biểu đồ
+                statusMap[status] = (statusMap[status] || 0) + 1;
 
-                    statusMap[status] = (statusMap[status] || 0) + 1;
+                return {
+                    key: order.id,
+                    id: `#${order.id}`,
+                    customer: userMap[order.userId || order.user_id] || 'Khách vãng lai',
+                    amount: amount,
+                    status: status,
+                    date: dayjs(order.orderDate || order.order_date).format('DD/MM/YYYY HH:mm')
+                };
+            });
 
-                    return {
-                        key: order.id,
-                        id: `#${order.id}`,
-                        customer: userMap[order.user_id] || `User ID: ${order.user_id}`,
-                        amount: amount,
-                        status: status,
-                        date: dayjs(order.order_date).format('DD/MM/YYYY')
-                    };
-                });
+            // Sắp xếp đơn hàng mới nhất lên trên
+            processedOrders.sort((a, b) => b.key - a.key);
 
-                setData({
-                    totalRevenue: revenue,
-                    orderCount: orders.length,
-                    userCount: users.length,
-                    productCount: products.length,
-                    pieData: Object.entries(statusMap).map(([name, value]) => ({ name, value })),
-                    recentOrders: processedOrders.slice(0, 5) // Lấy 5 đơn mới nhất
-                });
+            setData({
+                totalRevenue: revenue,
+                orderCount: orders.length,
+                userCount: users.length,
+                productCount: products.length,
+                pieData: Object.entries(statusMap).map(([name, value]) => ({ name, value })),
+                recentOrders: processedOrders.slice(0, 8) 
+            });
 
-            } catch (error) {
-                console.error(error);
-                message.error('Không thể kết nối đến máy chủ Railway!');
-            } finally {
-                setLoading(false);
-            }
-        };
-
-        useEffect(() => { fetchData(); }, []);
-
-        const exportExcel = () => {
-            const ws = XLSX.utils.json_to_sheet(data.recentOrders);
-            const wb = XLSX.utils.book_new();
-            XLSX.utils.book_append_sheet(wb, ws, "DoanhThu");
-            XLSX.writeFile(wb, `Bao_Cao_T1_${dayjs().format('YYYY')}.xlsx`);
-        };
-
-        if (loading) return <Spin size="large" style={{ display: 'block', margin: '100px auto' }} />;
-
-        return (
-            <div style={{ padding: '24px', background: '#f0f2f5', minHeight: '100vh' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
-                    <Title level={2}>💎 QUẢN TRỊ TRANG SỨC - REALTIME</Title>
-                    <Button type="primary" danger icon={<FileExcelOutlined />} onClick={exportExcel}>
-                        XUẤT BÁO CÁO
-                    </Button>
-                </div>
-
-                {/* Hàng 1: Thống kê tổng quan */}
-                <Row gutter={[16, 16]}>
-                    <Col xs={24} sm={12} lg={6}>
-                        <Card>
-                            <Statistic 
-                                title="Tổng Doanh Thu" 
-                                value={data.totalRevenue} 
-                                prefix={<DollarCircleOutlined />} 
-                                formatter={v => formatCurrency(v)}
-                                valueStyle={{ color: '#cf1322' }} 
-                            />
-                        </Card>
-                    </Col>
-                    <Col xs={24} sm={12} lg={6}>
-                        <Card>
-                            <Statistic 
-                                title="Tổng Đơn Hàng" 
-                                value={data.orderCount} 
-                                prefix={<ShoppingCartOutlined />} 
-                                valueStyle={{ color: '#1d39c4' }} 
-                            />
-                        </Card>
-                    </Col>
-                    <Col xs={24} sm={12} lg={6}>
-                        <Card>
-                            <Statistic 
-                                title="Khách Hàng" 
-                                value={data.userCount} 
-                                prefix={<UserOutlined />} 
-                                valueStyle={{ color: '#3f8600' }} 
-                            />
-                        </Card>
-                    </Col>
-                    <Col xs={24} sm={12} lg={6}>
-                        <Card>
-                            <Statistic 
-                                title="Sản Phẩm" 
-                                value={data.productCount} 
-                                prefix={<ShoppingOutlined />} 
-                                valueStyle={{ color: '#d46b08' }} 
-                            />
-                        </Card>
-                    </Col>
-                </Row>
-
-                {/* Hàng 2: Biểu đồ và Bảng */}
-                <Row gutter={[16, 16]} style={{ marginTop: 24 }}>
-                    <Col xs={24} lg={10}>
-                        <Card title="Phân tích Trạng thái Đơn hàng">
-                            <div style={{ height: 300 }}>
-                                <ResponsiveContainer width="100%" height="100%">
-                                    <PieChart>
-                                        <Pie 
-                                            data={data.pieData} 
-                                            innerRadius={60} 
-                                            outerRadius={100} 
-                                            paddingAngle={5} 
-                                            dataKey="value"
-                                        >
-                                            {data.pieData.map((entry, index) => (
-                                                <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                                            ))}
-                                        </Pie>
-                                        <Tooltip />
-                                        <Legend />
-                                    </PieChart>
-                                </ResponsiveContainer>
-                            </div>
-                        </Card>
-                    </Col>
-                    <Col xs={24} lg={14}>
-                        <Card title="Đơn hàng gần đây">
-                            <Table 
-                                columns={[
-                                    { title: 'Mã đơn', dataIndex: 'id', key: 'id' },
-                                    { title: 'Khách hàng', dataIndex: 'customer', key: 'customer' },
-                                    { title: 'Tổng tiền', dataIndex: 'amount', render: v => formatCurrency(v) },
-                                    { 
-                                        title: 'Trạng thái', 
-                                        dataIndex: 'status', 
-                                        render: (status) => (
-                                            <Tag color={status === 'DELIVERED' ? 'green' : 'gold'}>
-                                                {status}
-                                            </Tag>
-                                        ) 
-                                    },
-                                ]} 
-                                dataSource={data.recentOrders} 
-                                pagination={false}
-                                size="middle"
-                            />
-                        </Card>
-                    </Col>
-                </Row>
-            </div>
-        );
+        } catch (error) {
+            console.error('Lỗi Dashboard:', error);
+            message.error('Không thể lấy dữ liệu mới nhất từ máy chủ!');
+        } finally {
+            setLoading(false);
+        }
     };
 
-    export default Dashboard;
+    useEffect(() => { fetchData(); }, []);
+
+    const exportExcel = () => {
+        try {
+            const ws = XLSX.utils.json_to_sheet(data.recentOrders);
+            const wb = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(wb, ws, "Báo Cáo Doanh Thu");
+            XLSX.writeFile(wb, `Gems_Report_${dayjs().format('DD_MM_YYYY')}.xlsx`);
+            message.success('Đã xuất file báo cáo thành công!');
+        } catch (err) {
+            message.error('Lỗi khi xuất file Excel');
+        }
+    };
+
+    if (loading) return (
+        <div style={{ textAlign: 'center', padding: '100px' }}>
+            <Spin size="large" tip="Đang đồng bộ dữ liệu hệ thống..." />
+        </div>
+    );
+
+    return (
+        <div style={{ padding: '24px', background: '#f0f2f5', minHeight: '100vh' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
+                <Title level={2}>📊 TỔNG QUAN HỆ THỐNG</Title>
+                <Button type="primary" danger icon={<FileExcelOutlined />} onClick={exportExcel}>
+                    XUẤT BÁO CÁO EXCEL
+                </Button>
+            </div>
+
+            {/* Thẻ thống kê */}
+            <Row gutter={[16, 16]}>
+                <Col xs={24} sm={12} lg={6}>
+                    <Card hoverable>
+                        <Statistic 
+                            title="Thực Thu (Đã Giao)" 
+                            value={data.totalRevenue} 
+                            prefix={<DollarCircleOutlined />} 
+                            formatter={v => formatCurrency(v)}
+                            valueStyle={{ color: '#3f8600', fontWeight: 'bold' }} 
+                        />
+                    </Card>
+                </Col>
+                <Col xs={24} sm={12} lg={6}>
+                    <Card hoverable>
+                        <Statistic title="Tổng Đơn Hàng" value={data.orderCount} prefix={<ShoppingCartOutlined />} />
+                    </Card>
+                </Col>
+                <Col xs={24} sm={12} lg={6}>
+                    <Card hoverable>
+                        <Statistic title="Khách Hàng" value={data.userCount} prefix={<UserOutlined />} />
+                    </Card>
+                </Col>
+                <Col xs={24} sm={12} lg={6}>
+                    <Card hoverable>
+                        <Statistic title="Sản Phẩm" value={data.productCount} prefix={<ShoppingOutlined />} />
+                    </Card>
+                </Col>
+            </Row>
+
+            {/* Biểu đồ và Bảng dữ liệu */}
+            <Row gutter={[16, 16]} style={{ marginTop: 24 }}>
+                <Col xs={24} lg={10}>
+                    <Card title="Phân bổ trạng thái đơn hàng">
+                        <div style={{ height: 300 }}>
+                            <ResponsiveContainer width="100%" height="100%">
+                                <PieChart>
+                                    <Pie 
+                                        data={data.pieData} 
+                                        innerRadius={60} 
+                                        outerRadius={100} 
+                                        paddingAngle={5} 
+                                        dataKey="value"
+                                    >
+                                        {data.pieData.map((entry, index) => (
+                                            <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                                        ))}
+                                    </Pie>
+                                    <Tooltip />
+                                    <Legend />
+                                </PieChart>
+                            </ResponsiveContainer>
+                        </div>
+                    </Card>
+                </Col>
+                
+                <Col xs={24} lg={14}>
+                    <Card title="Các giao dịch mới nhất">
+                        <Table 
+                            columns={[
+                                { title: 'Mã đơn', dataIndex: 'id', key: 'id' },
+                                { title: 'Khách hàng', dataIndex: 'customer', key: 'customer' },
+                                { title: 'Số tiền', dataIndex: 'amount', render: v => <b>{formatCurrency(v)}</b> },
+                                { 
+                                    title: 'Trạng thái', 
+                                    dataIndex: 'status', 
+                                    render: (status) => (
+                                        <Tag color={status === 'DELIVERED' || status === 'COMPLETED' ? 'green' : 'orange'}>
+                                            {status}
+                                        </Tag>
+                                    ) 
+                                },
+                                { title: 'Ngày đặt', dataIndex: 'date' }
+                            ]} 
+                            dataSource={data.recentOrders} 
+                            pagination={false}
+                            size="middle"
+                        />
+                    </Card>
+                </Col>
+            </Row>
+        </div>
+    );
+};
+
+export default Dashboard;
