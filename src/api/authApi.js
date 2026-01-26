@@ -26,8 +26,8 @@ export const register = async (userData) => {
 };
 // Sửa axios thành apiClient cho đồng bộ với file cấu hình của ní
 export const sendOtpApi = async (email) => {
-    const response = await apiClient.post('/auth/forgot-password', { email });
-    return response.data;
+    const response = await axios.post('/auth/forgot-password', { email });
+    return response.data;
 };
 
 export const resetPasswordApi = async (data) => {
