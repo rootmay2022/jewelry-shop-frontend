@@ -1,6 +1,6 @@
 import apiClient from './axiosConfig';
 
-// 1. Đăng nhập (PHẢI CÓ /auth)
+// 1. Đăng nhập - PHẢI CÓ /auth
 export const login = async (credentials) => {
     try {
         const response = await apiClient.post('/auth/login', credentials);
@@ -10,10 +10,10 @@ export const login = async (credentials) => {
     }
 };
 
-// 2. Đăng ký (PHẢI CÓ /auth)
+// 2. Đăng ký - PHẢI CÓ /auth
 export const register = async (userData) => {
     try {
-        const finalData = { ...userData, device_id: userData.device_id || "ID_TEST_CUNG" };
+        const finalData = { ...userData, device_id: userData.device_id || "ID_TEST" };
         const response = await apiClient.post('/auth/register', finalData);
         return response.data;
     } catch (error) {
@@ -21,11 +21,10 @@ export const register = async (userData) => {
     }
 };
 
-// 3. Quên mật khẩu - Gửi OTP (Hàm này ní đang làm)
+// 3. Quên mật khẩu - Gửi OTP
 export const sendOtpApi = async (email) => {
     try {
         console.log("🚀 Đang gọi API gửi OTP cho:", email);
-        // Khớp 100%: /api + /auth + /forgot-password
         const response = await apiClient.post('/auth/forgot-password', { email }); 
         return response.data;
     } catch (error) {
@@ -34,7 +33,7 @@ export const sendOtpApi = async (email) => {
     }
 };
 
-// 4. Reset mật khẩu (PHẢI CÓ /auth)
+// 4. Reset mật khẩu - PHẢI CÓ /auth
 export const resetPasswordApi = async (data) => {
     try {
         const response = await apiClient.post('/auth/reset-password', data);
