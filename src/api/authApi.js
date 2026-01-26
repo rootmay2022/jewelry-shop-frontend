@@ -25,17 +25,17 @@ export const register = async (userData) => {
     }
 };
 
-// Hàm gửi OTP - Đã đổi từ axios sang apiClient
+// --- ĐÃ SỬA: Khớp với @PostMapping("/send-otp") bên Backend của ní ---
 export const sendOtpApi = async (email) => {
     try {
-        console.log("🚀 Đang gọi API Forgot Password cho:", email);
-        // Lưu ý: Backend đang đợi object { email: "..." }
-        const response = await apiClient.post('/auth/forgot-password', { email });
+        console.log("🚀 Đang gọi API Send OTP cho:", email);
+        // SỬA TẠI ĐÂY: Đổi '/auth/forgot-password' thành '/auth/send-otp'
+        const response = await apiClient.post('/auth/send-otp', { email }); 
         return response.data;
     } catch (error) {
-        console.error("❌ Lỗi API Forgot Password:", error.response?.data);
-        const errorMsg = error.response?.data?.message || "Email không tồn tại hoặc lỗi server";
-        throw new Error(errorMsg);
+        console.error("❌ Lỗi API Send OTP:", error.response?.data);
+        // Trả về message từ backend nếu có (ví dụ: "Email không tồn tại")
+        throw new Error(error.response?.data?.message || "Không thể gửi mã OTP");
     }
 };
 
