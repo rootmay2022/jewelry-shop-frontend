@@ -27,13 +27,13 @@ export const register = async (userData) => {
 // authApi.js
 export const sendOtpApi = async (email) => {
     try {
-        console.log("🚀 Gọi API quên mật khẩu cho:", email);
-        // GỌI ĐÚNG: /auth/forgot-password (apiClient đã có sẵn /api rồi)
+        console.log("🚀 Đang gọi API gửi OTP cho:", email);
+        // apiClient đã có baseURL là /api, nên gọi tiếp /auth/forgot-password
         const response = await apiClient.post('/auth/forgot-password', { email }); 
         return response.data;
     } catch (error) {
         console.error("❌ Lỗi API:", error.response?.data);
-        throw new Error(error.response?.data?.message || "Lỗi đường dẫn API");
+        throw new Error(error.response?.data?.message || "Lỗi đường dẫn");
     }
 };
 
