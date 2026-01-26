@@ -9,6 +9,7 @@ import Home from './pages/Home';
 import ProductsPage from './pages/product/ProductsPage';
 import ProductDetailPage from './pages/product/ProductDetailPage';
 import Login from './pages/auth/Login';
+import ForgotPassword from './pages/auth/ForgotPassword';
 import FashionNewsPage from './pages/FashionNews'; // ĐÚNG TÊN FILE
 import Register from './pages/auth/Register';
 

@@ -24,6 +24,16 @@ export const register = async (userData) => {
         throw new Error(errorMsg);
     }
 };
+// Thêm vào src/api/authApi.js
+export const sendOtpApi = async (email) => {
+    const response = await axios.post('/auth/forgot-password', { email });
+    return response.data;
+};
+
+export const resetPasswordApi = async (data) => {
+    const response = await axios.post('/auth/reset-password', data);
+    return response.data;
+};
 
 // --- ĐÂY LÀ HÀM CỨU CÁNH CHO CÁI BUILD NÈ NÍ ---
 export const getAllUsersAdmin = async () => {
