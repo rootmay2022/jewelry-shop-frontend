@@ -26,8 +26,15 @@ export const register = async (userData) => {
 };
 // Sửa axios thành apiClient cho đồng bộ với file cấu hình của ní
 export const sendOtpApi = async (email) => {
-    const response = await axios.post('/auth/forgot-password', { email });
-    return response.data;
+    try {
+        console.log("🚀 Đang gọi API Forgot Password cho:", email);
+        // Đổi axios thành apiClient
+        const response = await apiClient.post('/auth/forgot-password', { email });
+        return response.data;
+    } catch (error) {
+        console.error("❌ Lỗi API Forgot Password:", error.response?.data);
+        throw new Error(error.response?.data?.message || "Không thể gửi OTP");
+    }
 };
 
 export const resetPasswordApi = async (data) => {
