@@ -4,13 +4,8 @@ import {
     message, Popconfirm, Space, Tag, Card, Row, Col, Statistic, Upload, Image 
 } from 'antd';
 import { 
-    PlusOutlined, 
-    ImportOutlined, 
-    DeleteOutlined, 
-    EditOutlined, 
-    ShoppingOutlined,
-    WarningOutlined,
-    DollarOutlined
+    PlusOutlined, ImportOutlined, DeleteOutlined, EditOutlined, 
+    ShoppingOutlined, WarningOutlined, DollarOutlined 
 } from '@ant-design/icons';
 import { getAllProducts, createProduct, updateProduct, deleteProduct } from '../../api/productApi';
 import { getAllCategories } from '../../api/categoryApi';
@@ -26,6 +21,7 @@ const ProductManagement = () => {
     const [loading, setLoading] = useState(true);
     const [isModalVisible, setIsModalVisible] = useState(false);
     const [editingProduct, setEditingProduct] = useState(null);
+    const [submitting, setSubmitting] = useState(false); // Trạng thái khi đang lưu
     const [form] = Form.useForm();
 
     const fetchProductsAndCategories = async () => {
@@ -43,82 +39,91 @@ const ProductManagement = () => {
 
     useEffect(() => { fetchProductsAndCategories(); }, []);
 
-    // --- TÍNH NĂNG IMPORT EXCEL ---
-    const handleImportExcel = (file) => {
-        const reader = new FileReader();
-        reader.onload = async (e) => {
-            try {
-                const data = e.target.result;
-                const workbook = XLSX.read(data, { type: 'binary' });
-                const sheetName = workbook.SheetNames[0];
-                const sheet = workbook.Sheets[sheetName];
-                const parsedData = XLSX.utils.sheet_to_json(sheet);
+    // --- SỬA LỖI NÚT SỬA Ở ĐÂY ---
+    const showModal = (product = null) => {
+        if (product) {
+            // Nếu là SỬA: Đổ data vào form
+            setEditingProduct(product);
+            form.setFieldsValue({
+                ...product,
+                categoryId: product.categoryId || product.category?.id // Đảm bảo ăn đúng ID danh mục
+            });
+        } else {
+            // Nếu là THÊM MỚI: Reset form trống
+            setEditingProduct(null);
+            form.resetFields();
+        }
+        setIsModalVisible(true);
+    };
 
-                message.loading({ content: 'Đang import dữ liệu...', key: 'import' });
-                
-                // Gửi từng sản phẩm lên Server
-                let successCount = 0;
-                for (const item of parsedData) {
-                    const productData = {
-                        name: item["Tên Sản Phẩm"] || item.name,
-                        price: item["Giá"] || item.price,
-                        stockQuantity: item["Số lượng"] || item.stockQuantity,
-                        categoryId: item["Mã Danh Mục"] || item.categoryId,
-                        description: item["Mô tả"] || item.description,
-                        imageUrl: item["Link Ảnh"] || item.imageUrl,
-                        material: item["Chất liệu"] || item.material,
-                        weight: item["Trọng lượng"] || item.weight
-                    };
-                    await createProduct(productData);
-                    successCount++;
-                }
+    const handleCancel = () => {
+        setIsModalVisible(false);
+        setEditingProduct(null);
+        form.resetFields();
+    };
 
-                message.success({ content: `Đã import thành công ${successCount} sản phẩm!`, key: 'import' });
-                fetchProductsAndCategories();
-            } catch (error) {
-                message.error({ content: 'Lỗi định dạng file Excel hoặc kết nối API.', key: 'import' });
+    // Hàm xử lý khi bấm "Lưu" trên Modal
+    const handleFinish = async (values) => {
+        setSubmitting(true);
+        try {
+            if (editingProduct) {
+                // Gọi API Update
+                await updateProduct(editingProduct.id, values);
+                message.success('Cập nhật sản phẩm thành công!');
+            } else {
+                // Gọi API Create
+                await createProduct(values);
+                message.success('Thêm sản phẩm mới thành công!');
             }
-        };
-        reader.readAsBinaryString(file);
-        return false; // Chặn không cho upload file lên server theo cách mặc định của Antd
+            handleCancel();
+            fetchProductsAndCategories();
+        } catch (error) {
+            message.error('Thao tác thất bại. Vui lòng kiểm tra lại!');
+        } finally {
+            setSubmitting(false);
+        }
+    };
+
+    const handleDelete = async (id) => {
+        try {
+            await deleteProduct(id);
+            message.success('Đã xóa sản phẩm!');
+            fetchProductsAndCategories();
+        } catch (error) {
+            message.error('Xóa thất bại!');
+        }
     };
 
     const columns = [
         {
-            title: 'Hình ảnh',
+            title: 'Ảnh',
             dataIndex: 'imageUrl',
-            key: 'imageUrl',
-            render: (url) => <Image src={url} alt="product" width={50} fallback="https://via.placeholder.com/50" />
+            render: (url) => <Image src={url} width={50} fallback="https://via.placeholder.com/50" />
         },
-        { title: 'Tên Sản Phẩm', dataIndex: 'name', key: 'name', filterable: true },
-        { 
-            title: 'Danh Mục', 
-            dataIndex: 'categoryName', 
-            key: 'categoryName',
-            render: (name) => <Tag color="blue">{name || 'Trang sức'}</Tag>
-        },
+        { title: 'Tên Sản Phẩm', dataIndex: 'name', key: 'name' },
         { 
             title: 'Giá', 
             dataIndex: 'price', 
-            key: 'price', 
-            sorter: (a, b) => a.price - b.price,
-            render: (text) => <b style={{color: '#d4380d'}}>{formatCurrency(text)}</b> 
+            render: (p) => <b>{formatCurrency(p)}</b> 
         },
         { 
-            title: 'Tồn Kho', 
+            title: 'Kho', 
             dataIndex: 'stockQuantity', 
-            key: 'stockQuantity',
-            render: (q) => (
-                <Tag color={q < 10 ? 'red' : 'green'}>{q} món</Tag>
-            )
+            render: (q) => <Tag color={q < 10 ? 'red' : 'green'}>{q}</Tag> 
         },
         {
             title: 'Hành Động',
             key: 'action',
             render: (_, record) => (
-                <Space size="middle">
-                    <Button type="primary" ghost icon={<EditOutlined />} onClick={() => showModal(record)} />
-                    <Popconfirm title="Xóa sản phẩm này?" onConfirm={() => handleDelete(record.id)}>
+                <Space>
+                    <Button 
+                        type="primary" 
+                        icon={<EditOutlined />} 
+                        onClick={() => showModal(record)} // Nút Sửa gọi hàm đổ data
+                    >
+                        Sửa
+                    </Button>
+                    <Popconfirm title="Xóa món này?" onConfirm={() => handleDelete(record.id)}>
                         <Button danger icon={<DeleteOutlined />} />
                     </Popconfirm>
                 </Space>
@@ -128,72 +133,71 @@ const ProductManagement = () => {
 
     return (
         <div style={{ padding: '24px' }}>
-            <Row gutter={16} style={{ marginBottom: 24 }}>
-                <Col span={8}>
-                    <Card><Statistic title="Tổng sản phẩm" value={products.length} prefix={<ShoppingOutlined />} /></Card>
-                </Col>
-                <Col span={8}>
-                    <Card><Statistic title="Sắp hết hàng (<10)" value={products.filter(p => p.stockQuantity < 10).length} valueStyle={{color: '#cf1322'}} prefix={<WarningOutlined />} /></Card>
-                </Col>
-                <Col span={8}>
-                    <Card><Statistic title="Giá trị kho" value={products.reduce((sum, p) => sum + (p.price * p.stockQuantity), 0)} formatter={v => formatCurrency(v)} prefix={<DollarOutlined />} /></Card>
-                </Col>
-            </Row>
-
-            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 16 }}>
-                <Space>
-                    <Button type="primary" icon={<PlusOutlined />} onClick={() => showModal()}>Thêm Sản Phẩm</Button>
-                    <Upload beforeUpload={handleImportExcel} showUploadList={false}>
-                        <Button icon={<ImportOutlined />}>Import Excel</Button>
-                    </Upload>
-                </Space>
-                <i style={{color: 'gray'}}>* File Excel cần cột: name, price, stockQuantity, categoryId...</i>
+            <div style={{ marginBottom: 16, display: 'flex', justifyContent: 'space-between' }}>
+                <Title level={4}>QUẢN LÝ KHO HÀNG</Title>
+                <Button type="primary" icon={<PlusOutlined />} onClick={() => showModal()}>
+                    Thêm Sản Phẩm
+                </Button>
             </div>
 
-            <Table columns={columns} dataSource={products} loading={loading} rowKey="id" bordered />
+            <Table columns={columns} dataSource={products} loading={loading} rowKey="id" />
 
-            {/* Modal Form giữ nguyên như cũ của ní nhưng thêm style cho đẹp */}
             <Modal
-                title={editingProduct ? 'Sửa Sản Phẩm' : 'Thêm Sản Phẩm Mới'}
+                title={editingProduct ? 'CẬP NHẬT SẢN PHẨM' : 'THÊM MỚI SẢN PHẨM'}
                 open={isModalVisible}
-                onOk={() => form.submit()}
-                onCancel={() => setIsModalVisible(false)}
-                width={700}
+                onCancel={handleCancel}
+                onOk={() => form.submit()} // Kích hoạt submit form
+                confirmLoading={submitting}
+                okText="Lưu lại"
+                cancelText="Hủy"
+                width={650}
             >
-                <Form form={form} layout="vertical" onFinish={async (values) => {
-                    try {
-                        if (editingProduct) await updateProduct(editingProduct.id, values);
-                        else await createProduct(values);
-                        message.success('Thành công!');
-                        setIsModalVisible(false);
-                        fetchProductsAndCategories();
-                    } catch (e) { message.error('Thất bại'); }
-                }}>
+                <Form 
+                    form={form} 
+                    layout="vertical" 
+                    onFinish={handleFinish} // Khi bấm OK hoặc Enter sẽ chạy hàm này
+                >
                     <Row gutter={16}>
-                        <Col span={12}>
-                            <Form.Item name="name" label="Tên sản phẩm" rules={[{ required: true }]}><Input /></Form.Item>
-                        </Col>
-                        <Col span={12}>
-                            <Form.Item name="categoryId" label="Danh mục" rules={[{ required: true }]}>
-                                <Select>{categories.map(cat => <Option key={cat.id} value={cat.id}>{cat.name}</Option>)}</Select>
+                        <Col span={16}>
+                            <Form.Item name="name" label="Tên sản phẩm" rules={[{ required: true, message: 'Không được để trống!' }]}>
+                                <Input />
                             </Form.Item>
                         </Col>
                         <Col span={8}>
-                            <Form.Item name="price" label="Giá" rules={[{ required: true }]}><InputNumber style={{width:'100%'}} /></Form.Item>
-                        </Col>
-                        <Col span={8}>
-                            <Form.Item name="stockQuantity" label="Tồn kho" rules={[{ required: true }]}><InputNumber style={{width:'100%'}} /></Form.Item>
-                        </Col>
-                        <Col span={8}>
-                            <Form.Item name="weight" label="Trọng lượng (g)"><InputNumber style={{width:'100%'}} /></Form.Item>
+                            <Form.Item name="categoryId" label="Danh mục" rules={[{ required: true }]}>
+                                <Select>
+                                    {categories.map(c => <Option key={c.id} value={c.id}>{c.name}</Option>)}
+                                </Select>
+                            </Form.Item>
                         </Col>
                     </Row>
-                    <Form.Item name="imageUrl" label="URL Hình ảnh"><Input placeholder="https://..." /></Form.Item>
-                    <Form.Item name="description" label="Mô tả"><TextArea rows={3} /></Form.Item>
+                    
+                    <Row gutter={16}>
+                        <Col span={12}>
+                            <Form.Item name="price" label="Giá bán" rules={[{ required: true }]}>
+                                <InputNumber style={{ width: '100%' }} formatter={value => `${value}`.replace(/\B(?=(\d{3})+(?!\d))/g, ',')} />
+                            </Form.Item>
+                        </Col>
+                        <Col span={12}>
+                            <Form.Item name="stockQuantity" label="Số lượng tồn" rules={[{ required: true }]}>
+                                <InputNumber style={{ width: '100%' }} />
+                            </Form.Item>
+                        </Col>
+                    </Row>
+
+                    <Form.Item name="imageUrl" label="Link hình ảnh">
+                        <Input placeholder="https://..." />
+                    </Form.Item>
+
+                    <Form.Item name="description" label="Mô tả chi tiết">
+                        <TextArea rows={4} />
+                    </Form.Item>
                 </Form>
             </Modal>
         </div>
     );
 };
+
+const Title = Typography.Title; // Thêm cái này để chạy được Title
 
 export default ProductManagement;
