@@ -24,28 +24,37 @@ export const register = async (userData) => {
         throw new Error(errorMsg);
     }
 };
-// Sửa axios thành apiClient cho đồng bộ với file cấu hình của ní
+
+// Hàm gửi OTP - Đã đổi từ axios sang apiClient
 export const sendOtpApi = async (email) => {
     try {
         console.log("🚀 Đang gọi API Forgot Password cho:", email);
-        // Đổi axios thành apiClient
+        // Lưu ý: Backend đang đợi object { email: "..." }
         const response = await apiClient.post('/auth/forgot-password', { email });
         return response.data;
     } catch (error) {
         console.error("❌ Lỗi API Forgot Password:", error.response?.data);
-        throw new Error(error.response?.data?.message || "Không thể gửi OTP");
+        const errorMsg = error.response?.data?.message || "Email không tồn tại hoặc lỗi server";
+        throw new Error(errorMsg);
     }
 };
 
+// Hàm đặt lại mật khẩu mới
 export const resetPasswordApi = async (data) => {
-    const response = await apiClient.post('/auth/reset-password', data);
-    return response.data;
+    try {
+        console.log("🚀 Đang gửi yêu cầu Reset Password...");
+        const response = await apiClient.post('/auth/reset-password', data);
+        return response.data;
+    } catch (error) {
+        console.error("❌ Lỗi Reset Password API:", error.response?.data);
+        const errorMsg = error.response?.data?.message || "Mã OTP không đúng hoặc đã hết hạn";
+        throw new Error(errorMsg);
+    }
 };
 
-// --- ĐÂY LÀ HÀM CỨU CÁNH CHO CÁI BUILD NÈ NÍ ---
+// Hàm lấy danh sách Admin
 export const getAllUsersAdmin = async () => {
     try {
-        // Tui để đường dẫn /admin/users theo chuẩn backend ní hay dùng
         const response = await apiClient.get('/admin/users'); 
         return response.data;
     } catch (error) {
