@@ -47,7 +47,7 @@ const CartItem = ({ item }) => {
                     <Text strong>{item.productName}</Text>
                     <br />
                     <Text type="secondary" style={{ fontSize: '12px' }}>
-                        Kho còn: <Text strong style={{ color: stock > 0 ? '#52c41a' : '#ff4d4f' }}>{stock}</Text>
+                        Kho còn: <Text strong style={{ color: stock > 10 ? '#52c41a' : '#ff4d4f' }}>{stock}</Text>
                     </Text>
                     {isOverStock && (
                         <div style={{ color: '#ff4d4f', fontSize: '11px' }}>
