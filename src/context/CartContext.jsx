@@ -74,7 +74,7 @@ const updateItemQuantity = async (itemId, quantity) => {
   const item = cart?.items?.find(i => i.id === itemId);
   
   // Lấy stock chuẩn từ field phẳng hoặc lồng trong product
-  const stock = item?.stockQuantity ?? item?.product?.stockQuantity;
+  const stock = item?.stockQuantity ?? item?.products?.stockQuantity;
 
   if (stock !== undefined && quantity > stock) {
     message.warning(`Trong kho chỉ còn ${stock} sản phẩm.`);
