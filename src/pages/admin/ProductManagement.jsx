@@ -1,11 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { 
     Table, Button, Modal, Form, Input, InputNumber, Select, 
-    message, Popconfirm, Space, Tag, Card, Row, Col, Statistic, Image, Typography, Tooltip, Divider 
+    message, Popconfirm, Space, Tag, Card, Row, Col, Image, Typography, Divider 
 } from 'antd';
 import { 
     PlusOutlined, DeleteOutlined, EditOutlined, 
-    ShoppingOutlined, WarningOutlined, DollarOutlined, SearchOutlined, ReloadOutlined,
+    SearchOutlined, ReloadOutlined,
     PercentageOutlined, TagOutlined 
 } from '@ant-design/icons';
 import { getAllProducts, createProduct, updateProduct, deleteProduct } from '../../api/productApi';
@@ -63,7 +63,10 @@ const ProductManagement = () => {
     const showModal = (product = null) => {
         if (product) {
             setEditingProduct(product);
-            form.setFieldsValue({ ...product, categoryId: product.categoryId || product.category?.id });
+            form.setFieldsValue({ 
+                ...product, 
+                categoryId: product.categoryId || product.category?.id 
+            });
         } else {
             setEditingProduct(null);
             form.resetFields();
@@ -117,28 +120,35 @@ const ProductManagement = () => {
         { 
             title: 'Giá gốc', 
             dataIndex: 'price', 
-            render: (p) => <Text delete type="secondary">{formatCurrency(p)}</Text> 
+            render: (p, record) => {
+                const discount = Number(record.discountValue) || 0;
+                // Nếu có giảm giá thì mới gạch ngang giá gốc
+                return discount > 0 ? <Text delete type="secondary">{formatCurrency(p)}</Text> : <Text>{formatCurrency(p)}</Text>;
+            }
         },
         { 
             title: 'Giá sau giảm', 
             key: 'discount',
             render: (_, record) => {
-                const price = record.price || 0;
-                const discount = record.discountValue || 0;
+                const price = Number(record.price) || 0;
+                const dValue = Number(record.discountValue) || 0;
                 
-                // FIX: Nếu không có giảm giá, hiển thị giá gốc bình thường
-                if (discount <= 0) {
+                // FIXED LOGIC: Nếu không giảm giá (<= 0), hiện giá đen đậm bình thường
+                if (dValue <= 0) {
                     return <Text strong>{formatCurrency(price)}</Text>;
                 }
 
+                // Nếu có giảm giá: Tính toán và hiện màu đỏ nổi bật
                 const finalPrice = record.discountType === 'percent' 
-                    ? price * (1 - discount / 100) 
-                    : price - discount;
+                    ? price * (1 - dValue / 100) 
+                    : price - dValue;
 
                 return (
                     <Space direction="vertical" size={0}>
                         <Text type="danger" strong>{formatCurrency(finalPrice)}</Text>
-                        <Tag color="volcano">-{discount}{record.discountType === 'percent' ? '%' : 'đ'}</Tag>
+                        <Tag color="volcano">
+                            -{dValue}{record.discountType === 'percent' ? '%' : 'đ'}
+                        </Tag>
                     </Space>
                 );
             }
