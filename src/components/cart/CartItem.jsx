@@ -12,7 +12,7 @@ const CartItem = ({ item }) => {
     
     // Lấy đúng stockQuantity từ Backend (cái số 40 trong DB ní vừa fix)
     // Ưu tiên lấy trực tiếp từ item, nếu không có thì mới tìm trong product
-    const stock = item.stockQuantity ?? item.product?.stockQuantity ?? 0;
+    const stock = item.stockQuantity ?? item.products?.stockQuantity ?? 0;
     const isOverStock = item.quantity > stock;
 
     const handleQuantityChange = (value) => {
