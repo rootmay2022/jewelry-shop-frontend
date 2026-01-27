@@ -1,11 +1,10 @@
-import React, { useState, useEffect, useRef, useMemo } from 'react';
-import { Row, Col, Card, Form, Input, Radio, Button, Typography, Spin, App, Modal, Switch, Divider } from 'antd';
-import { useNavigate, useLocation } from 'react-router-dom';
-import { ShoppingBag, CreditCard, Truck, Building2, ReceiptText } from 'lucide-react';
+import React, { useState, useEffect, useRef } from 'react';
+import { Row, Col, Card, Form, Input, Radio, Button, Typography, Spin, App, Modal, Switch, Divider, Badge, Space } from 'antd';
+import { useNavigate } from 'react-router-dom';
+import { ShoppingBag, CreditCard, Truck, Building2, ShieldCheck, ReceiptText, Printer } from 'lucide-react';
 import { useCart } from '../../context/CartContext';
 import { useAuth } from '../../context/AuthContext';
 import { createOrder } from '../../api/orderApi';
-import axios from 'axios';
 import formatCurrency from '../../utils/formatCurrency';
 import LocationPicker from '../../components/cart/LocationPicker';
 import jsPDF from 'jspdf';
@@ -21,47 +20,13 @@ const CheckoutPage = () => {
     const [loading, setLoading] = useState(false);
     const [isCompany, setIsCompany] = useState(false);
     const navigate = useNavigate();
-    const location = useLocation();
     const [form] = Form.useForm();
     const { message } = App.useApp();
     const paymentMethod = Form.useWatch('paymentMethod', form);
-    const invoiceRef = useRef(null);
+    const invoiceRef = useRef(null); // Ref để in hóa đơn
 
     const gold = '#C5A059';
     const darkNavy = '#001529';
-
-    // Gom dữ liệu để hiển thị và xử lý
-    const checkoutData = useMemo(() => {
-        if (location.state?.buyNow && location.state?.product) {
-            const p = location.state.product;
-            const qty = location.state.quantity || 1;
-            return {
-                items: [{
-                    productId: p.id || p._id,
-                    productName: p.name,
-                    price: p.price,
-                    quantity: qty,
-                    image: p.image
-                }],
-                totalAmount: p.price * qty,
-                isBuyNow: true
-            };
-        }
-        if (cart?.items?.length > 0) {
-            return {
-                items: cart.items.map(item => ({
-                    productId: item.productId?._id || item.productId || item.id,
-                    productName: item.productName || item.productId?.name,
-                    price: item.price,
-                    quantity: item.quantity,
-                    image: item.image
-                })),
-                totalAmount: cart.totalAmount,
-                isBuyNow: false
-            };
-        }
-        return null;
-    }, [cart, location.state]);
 
     useEffect(() => {
         if (user) {
@@ -77,11 +42,16 @@ const CheckoutPage = () => {
         form.setFieldsValue({ shippingAddress: detailedAddress });
     };
 
+    // --- HÀM XUẤT HÓA ĐƠN PDF SANG TRỌNG ---
     const generatePDF = async (orderId) => {
         const element = invoiceRef.current;
         if (!element) return;
         try {
-            const canvas = await html2canvas(element, { scale: 3, useCORS: true });
+            const canvas = await html2canvas(element, { 
+                scale: 3, // Tăng độ nét cực cao
+                useCORS: true,
+                logging: false
+            });
             const imgData = canvas.toDataURL('image/png');
             const pdf = new jsPDF('p', 'mm', 'a4');
             const pdfWidth = pdf.internal.pageSize.getWidth();
@@ -89,25 +59,36 @@ const CheckoutPage = () => {
             pdf.addImage(imgData, 'PNG', 0, 0, pdfWidth, pdfHeight);
             pdf.save(`HoaDon_Jewelry_${orderId}.pdf`);
         } catch (error) {
-            console.error("Lỗi tạo PDF:", error);
+            console.error("Lỗi PDF:", error);
         }
     };
 
     const showPaymentQR = (order) => {
-        const qrUrl = `https://img.vietqr.io/image/MB-89999999251105-compact2.png?amount=${order.totalAmount}&addInfo=${encodeURIComponent(`THANH TOAN DON HANG ${order.id}`)}&accountName=NGUYEN KHANH HUNG`;
+        const bankId = "MB"; 
+        const accountNo = "89999999251105"; 
+        const accountName = "NGUYEN KHANH HUNG"; 
+        const qrUrl = `https://img.vietqr.io/image/${bankId}-${accountNo}-compact2.png?amount=${order.totalAmount}&addInfo=${encodeURIComponent(`THANH TOAN DON HANG ${order.id}`)}&accountName=${encodeURIComponent(accountName)}`;
+
         Modal.confirm({
-            title: <div style={{ fontFamily: 'Playfair Display', fontSize: '20px' }}>THANH TOÁN QR CODE</div>,
+            title: <div style={{ fontFamily: 'Playfair Display', fontSize: '20px' }}>THANH TOÁN QUA QR CODE</div>,
+            icon: <CreditCard color={gold} />,
             width: 500,
             centered: true,
             content: (
                 <div style={{ textAlign: 'center', padding: '20px 0' }}>
-                    <img src={qrUrl} alt="QR" style={{ width: '100%', maxWidth: '280px', marginBottom: 20 }} />
-                    <div style={{ textAlign: 'left', background: '#f9f9f9', padding: '15px', borderRadius: '8px' }}>
-                        <Text type="secondary">Số tiền: </Text><Title level={4} style={{ display: 'inline', color: darkNavy }}>{formatCurrency(order.totalAmount)}</Title><br/>
-                        <Text type="secondary">Nội dung: </Text><Text strong style={{ color: gold }}>THANH TOAN DON HANG {order.id}</Text>
+                    <div style={{ background: '#fff', padding: '20px', border: `1px solid #eee`, display: 'inline-block', borderRadius: '12px' }}>
+                        <img src={qrUrl} alt="QR Code" style={{ width: '100%', maxWidth: '280px' }} />
+                    </div>
+                    <div style={{ marginTop: '20px', textAlign: 'left', background: '#f9f9f9', padding: '15px', borderRadius: '8px' }}>
+                        <Text type="secondary">Số tiền thanh toán:</Text><br/>
+                        <Title level={3} style={{ margin: '0 0 10px 0', color: darkNavy }}>{formatCurrency(order.totalAmount)}</Title>
+                        <Text type="secondary">Nội dung chuyển khoản:</Text><br/>
+                        <Text strong style={{ color: gold, fontSize: '16px' }}>THANH TOAN DON HANG {order.id}</Text>
                     </div>
                 </div>
             ),
+            okText: 'Tôi đã hoàn tất thanh toán',
+            cancelText: 'Quay lại',
             onOk: async () => {
                 await clearCart();
                 navigate(`/order-success/${order.id}`);
@@ -116,136 +97,122 @@ const CheckoutPage = () => {
     };
 
     const onFinish = async (values) => {
-        if (!checkoutData) return;
         setLoading(true);
         try {
-            const token = localStorage.getItem('token');
-            
-            // Xử lý lỗi 400 cho Mua Ngay: Ép sản phẩm vào giỏ hàng DB trước
-            if (checkoutData.isBuyNow) {
-                try {
-                    // NẾU LỖI 400/405, HÃY THỬ ĐỔI '/api/cart' THÀNH '/api/carts'
-                    await axios.post('https://jewelry-shop-backend-production.up.railway.app/api/cart', {
-                        productId: checkoutData.items[0].productId,
-                        quantity: checkoutData.items[0].quantity
-                    }, {
-                        headers: { Authorization: `Bearer ${token}` }
-                    });
-                    await new Promise(r => setTimeout(r, 400)); // Đợi DB lưu
-                } catch (e) {
-                    console.warn("Thêm vào giỏ hàng thất bại hoặc đã có sẵn:", e);
-                }
-            }
-
-            // Payload gửi cho OrderController (Spring Boot)
-            const orderRequest = {
-                fullName: values.fullName,
-                phone: values.phone,
-                shippingAddress: values.shippingAddress,
-                paymentMethod: values.paymentMethod,
+            const orderPayload = {
+                ...values,
+                userId: user?.id,
+                totalAmount: cart?.totalAmount || 0,
                 isVAT: isCompany,
-                companyName: values.companyName,
-                companyTaxCode: values.companyTaxCode,
-                totalAmount: checkoutData.totalAmount
+                items: cart.items.map(item => ({
+                    productId: item.id || item.productId,
+                    quantity: item.quantity,
+                    price: item.price
+                }))
             };
 
-            const response = await createOrder(orderRequest);
-            
-            // Spring Boot ApiResponse thường bọc trong .data
-            const apiRes = response.data || response;
-            if (apiRes.success) {
-                const orderInfo = apiRes.data;
-                message.loading({ content: 'Đang xuất hóa đơn...', key: 'updatable' });
-                await generatePDF(orderInfo.id);
-                message.success({ content: 'Đặt hàng thành công!', key: 'updatable' });
+            const response = await createOrder(orderPayload);
+            if (response.success) {
+                // Xuất hóa đơn ngay lập tức
+                message.loading({ content: 'Đang tạo hóa đơn...', key: 'pdf' });
+                await generatePDF(response.data.id);
+                message.success({ content: 'Đã tải hóa đơn!', key: 'pdf', duration: 2 });
 
                 if (values.paymentMethod === 'BANK_TRANSFER') {
-                    showPaymentQR(orderInfo);
+                    showPaymentQR(response.data);
                 } else {
+                    message.success('Đặt hàng thành công!');
                     await clearCart();
-                    navigate(`/order-success/${orderInfo.id}`);
+                    navigate(`/order-success/${response.data.id}`);
                 }
             }
         } catch (error) {
-            const errorMsg = error.response?.data?.message || 'Lỗi kết nối Server.';
-            message.error(errorMsg);
+            message.error('Có lỗi xảy ra khi đặt hàng.');
         } finally {
             setLoading(false);
         }
     };
 
-    if (!checkoutData) return <div style={{ textAlign: 'center', padding: '100px' }}><Spin size="large" /></div>;
+    if (!cart || cart.items.length === 0) {
+        return (
+            <div style={{ textAlign: 'center', padding: '100px' }}>
+                <Spin size="large" />
+                <Paragraph style={{ marginTop: 20 }}>Đang kiểm tra túi hàng...</Paragraph>
+            </div>
+        );
+    }
 
     return (
-        <div style={{ backgroundColor: '#f8f9fa', minHeight: '100vh', padding: '40px 0' }}>
+        <div style={{ backgroundColor: '#f4f4f4', minHeight: '100vh', padding: '40px 0' }}>
             <div style={{ maxWidth: '1200px', margin: '0 auto', padding: '0 20px' }}>
-                <Title level={2} style={{ fontFamily: 'Playfair Display', letterSpacing: '2px', marginBottom: 40 }}>CHECKOUT</Title>
-                
+                <div style={{ marginBottom: '30px' }}>
+                    <Title level={2} style={{ fontFamily: 'Playfair Display', letterSpacing: '2px' }}>CHECKOUT</Title>
+                    <Text type="secondary"><ShoppingBag size={14} style={{ verticalAlign: 'middle', marginRight: 5 }} /> Túi hàng của bạn đang được chuẩn bị để giao đi</Text>
+                </div>
+
                 <Form form={form} layout="vertical" onFinish={onFinish}>
                     <Row gutter={[32, 32]}>
-                        {/* CỘT TRÁI: THÔNG TIN GIAO HÀNG */}
                         <Col xs={24} lg={14}>
-                            <Card bordered={false} className="luxury-card">
-                                <Title level={4} style={{ marginBottom: 30 }}><Truck size={22} style={{ marginRight: 10, verticalAlign: 'bottom' }} /> THÔNG TIN GIAO NHẬN</Title>
-                                
+                            <Card bordered={false} className="checkout-card">
+                                <Title level={4} style={{ marginBottom: 25 }}><Truck size={20} style={{ marginRight: 10, verticalAlign: 'middle' }} /> Thông tin giao hàng</Title>
                                 <Row gutter={16}>
                                     <Col span={12}>
-                                        <Form.Item name="fullName" label="HỌ TÊN KHÁCH HÀNG" rules={[{ required: true, message: 'Vui lòng nhập họ tên' }]}>
-                                            <Input size="large" className="luxury-input" placeholder="Nguyễn Văn A" />
+                                        <Form.Item name="fullName" label="HỌ TÊN NGƯỜI NHẬN" rules={[{ required: true }]}>
+                                            <Input size="large" className="luxury-input" />
                                         </Form.Item>
                                     </Col>
                                     <Col span={12}>
-                                        <Form.Item name="phone" label="SỐ ĐIỆN THOẠI" rules={[{ required: true, message: 'Vui lòng nhập số điện thoại' }]}>
-                                            <Input size="large" className="luxury-input" placeholder="090xxxxxxx" />
+                                        <Form.Item name="phone" label="SỐ ĐIỆN THOẠI" rules={[{ required: true }]}>
+                                            <Input size="large" className="luxury-input" />
                                         </Form.Item>
                                     </Col>
                                 </Row>
 
-                                <div style={{ marginBottom: 25 }}>
-                                    <Text strong style={{ fontSize: '12px', color: '#888' }}>VỊ TRÍ GIAO HÀNG</Text>
+                                <div style={{ marginBottom: 20 }}>
+                                    <Text strong style={{ fontSize: '12px', color: '#888' }}>VỊ TRÍ TRÊN BẢN ĐỒ</Text>
                                     <div style={{ marginTop: 10 }}>
                                         <LocationPicker onAddressFound={handleAddressFound} />
                                     </div>
                                 </div>
 
-                                <Form.Item name="shippingAddress" label="ĐỊA CHỈ NHẬN HÀNG CHI TIẾT" rules={[{ required: true, message: 'Vui lòng chọn hoặc nhập địa chỉ' }]}>
-                                    <TextArea rows={3} className="luxury-input" placeholder="Số nhà, tên đường, phường/xã..." />
+                                <Form.Item name="shippingAddress" label="ĐỊA CHỈ CHI TIẾT" rules={[{ required: true }]}>
+                                    <TextArea rows={3} className="luxury-input" />
                                 </Form.Item>
 
                                 <Divider />
-                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 15 }}>
-                                    <span><Building2 size={18} style={{ marginRight: 10 }} /><Text strong>YÊU CẦU XUẤT HÓA ĐƠN VAT</Text></span>
-                                    <Switch checked={isCompany} onChange={setIsCompany} style={{ background: isCompany ? gold : '#d9d9d9' }} />
+                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
+                                    <span><Building2 size={18} style={{ marginRight: 10, verticalAlign: 'middle' }} /><Text strong>Xuất hóa đơn GTGT (VAT)</Text></span>
+                                    <Switch checked={isCompany} onChange={setIsCompany} style={{ background: isCompany ? gold : '#ccc' }} />
                                 </div>
 
                                 {isCompany && (
-                                    <div className="company-info-area">
+                                    <div style={{ padding: '20px', background: '#f9f9f9', borderLeft: `3px solid ${gold}`, marginBottom: 20 }}>
                                         <Form.Item name="companyName" label="TÊN CÔNG TY" rules={[{ required: true }]}><Input className="luxury-input" /></Form.Item>
                                         <Form.Item name="companyTaxCode" label="MÃ SỐ THUẾ" rules={[{ required: true }]}><Input className="luxury-input" /></Form.Item>
                                     </div>
                                 )}
 
                                 <Divider />
-                                <Title level={4} style={{ marginBottom: 25 }}><CreditCard size={22} style={{ marginRight: 10, verticalAlign: 'bottom' }} /> PHƯƠNG THỨC THANH TOÁN</Title>
+                                <Title level={4} style={{ marginBottom: 25 }}><CreditCard size={20} style={{ marginRight: 10, verticalAlign: 'middle' }} /> Phương thức thanh toán</Title>
                                 <Form.Item name="paymentMethod" initialValue="COD">
                                     <Radio.Group className="luxury-radio-group">
                                         <Radio.Button value="COD">THANH TOÁN KHI NHẬN HÀNG (COD)</Radio.Button>
-                                        <Radio.Button value="BANK_TRANSFER">CHUYỂN KHOẢN NGÂN HÀNG (VIETQR)</Radio.Button>
+                                        <Radio.Button value="BANK_TRANSFER">CHUYỂN KHOẢN QUA QR CODE</Radio.Button>
                                     </Radio.Group>
                                 </Form.Item>
                             </Card>
                         </Col>
 
-                        {/* CỘT PHẢI: TÓM TẮT ĐƠN HÀNG */}
                         <Col xs={24} lg={10}>
-                            <Card bordered={false} className="order-summary-card">
-                                <Title level={4} style={{ textAlign: 'center', letterSpacing: '2px' }}><ReceiptText size={20} style={{ marginRight: 8 }} /> TÚI HÀNG</Title>
+                            <Card bordered={false} className="receipt-card">
+                                <Title level={4} style={{ textAlign: 'center', letterSpacing: '3px' }}>
+                                    <ReceiptText size={20} style={{ marginBottom: -5, marginRight: 8 }} /> ĐƠN HÀNG
+                                </Title>
                                 <Divider />
-                                
-                                <div className="checkout-items-list">
-                                    {checkoutData.items.map((item, index) => (
-                                        <div key={index} className="item-row">
-                                            <div style={{ flex: 1 }}>
+                                <div className="receipt-items">
+                                    {cart.items.map(item => (
+                                        <div key={item.id} className="receipt-item">
+                                            <div style={{ flex: 1, paddingRight: 10 }}>
                                                 <Text strong style={{ display: 'block' }}>{item.productName}</Text>
                                                 <Text type="secondary" style={{ fontSize: '12px' }}>Số lượng: {item.quantity}</Text>
                                             </div>
@@ -253,99 +220,102 @@ const CheckoutPage = () => {
                                         </div>
                                     ))}
                                 </div>
-
-                                <Divider style={{ margin: '24px 0' }} />
-                                
-                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                                    <Text style={{ fontSize: '16px' }}>TỔNG THANH TOÁN</Text>
-                                    <Title level={3} style={{ margin: 0, color: darkNavy }}>{formatCurrency(checkoutData.totalAmount)}</Title>
+                                <Divider />
+                                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 20 }}>
+                                    <Title level={3} style={{ margin: 0 }}>TỔNG CỘNG</Title>
+                                    <Title level={3} style={{ margin: 0, color: darkNavy }}>{formatCurrency(cart.totalAmount)}</Title>
                                 </div>
-
-                                <Button type="primary" htmlType="submit" size="large" block loading={loading} className="checkout-submit-btn">
-                                    {paymentMethod === 'BANK_TRANSFER' ? 'XÁC NHẬN & THANH TOÁN QR' : 'XÁC NHẬN ĐẶT HÀNG'}
+                                
+                                <Button type="primary" htmlType="submit" size="large" block loading={loading}
+                                    style={{ height: '60px', background: darkNavy, borderRadius: 0, fontWeight: 'bold', border: 'none' }}>
+                                    {paymentMethod === 'BANK_TRANSFER' ? 'XÁC NHẬN & HIỂN THỊ MÃ QR' : 'HOÀN TẤT ĐẶT HÀNG'}
                                 </Button>
-                                
-                                <div style={{ textAlign: 'center', marginTop: 15 }}>
-                                    <Text type="secondary" style={{ fontSize: '12px' }}>Bằng việc đặt hàng, bạn đồng ý với điều khoản của chúng tôi</Text>
-                                </div>
                             </Card>
                         </Col>
                     </Row>
                 </Form>
             </div>
 
-            {/* THIẾT KẾ HÓA ĐƠN PDF (ẨN) */}
+            {/* --- 5. TEMPLATE HÓA ĐƠN PDF (ẨN) --- */}
             <div style={{ position: 'absolute', left: '-9999px', top: '-9999px' }}>
-                <div ref={invoiceRef} style={{ width: '210mm', minHeight: '297mm', padding: '20mm', background: '#fff', color: '#333' }}>
-                    <div style={{ border: `2px solid ${gold}`, padding: '15mm', height: '100%' }}>
+                <div ref={invoiceRef} style={{ width: '210mm', minHeight: '297mm', padding: '20mm', background: '#fff', color: '#333', fontFamily: '"Times New Roman", Times, serif' }}>
+                    <div style={{ border: '2px solid #C5A059', padding: '10mm', height: '100%' }}>
+                        {/* Header */}
                         <div style={{ textAlign: 'center', marginBottom: '15mm' }}>
-                            <h1 style={{ color: gold, fontSize: '36px', margin: 0, letterSpacing: '5px' }}>JEWELRY LUXURY</h1>
-                            <p style={{ textTransform: 'uppercase', fontSize: '14px', letterSpacing: '2px' }}>Biểu tượng của sự sang trọng</p>
-                            <div style={{ height: '1px', background: gold, width: '40%', margin: '15px auto' }}></div>
+                            <h1 style={{ color: gold, fontSize: '32px', margin: 0, letterSpacing: '4px' }}>JEWELRY LUXURY</h1>
+                            <p style={{ margin: '5px 0', textTransform: 'uppercase', fontSize: '12px' }}>The Essence of Elegance</p>
+                            <div style={{ height: '1px', background: gold, width: '50%', margin: '15px auto' }}></div>
                         </div>
 
-                        <Row gutter={40} style={{ marginBottom: '15mm' }}>
-                            <Col span={12}>
-                                <Text strong style={{ color: gold }}>THÔNG TIN KHÁCH HÀNG</Text>
-                                <Paragraph style={{ marginTop: 10 }}>
-                                    <strong>Tên:</strong> {form.getFieldValue('fullName')}<br/>
-                                    <strong>SĐT:</strong> {form.getFieldValue('phone')}<br/>
-                                    <strong>Địa chỉ:</strong> {form.getFieldValue('shippingAddress')}
-                                </Paragraph>
+                        {/* Thông tin đơn hàng */}
+                        <Row gutter={20} style={{ marginBottom: '10mm' }}>
+                            <Col span={14}>
+                                <h3 style={{ borderBottom: '1px solid #ddd', paddingBottom: '5px' }}>KHÁCH HÀNG</h3>
+                                <p><strong>Họ tên:</strong> {form.getFieldValue('fullName')}</p>
+                                <p><strong>Điện thoại:</strong> {form.getFieldValue('phone')}</p>
+                                <p><strong>Địa chỉ:</strong> {form.getFieldValue('shippingAddress')}</p>
                             </Col>
-                            <Col span={12} style={{ textAlign: 'right' }}>
-                                <Text strong style={{ color: gold }}>CHI TIẾT ĐƠN HÀNG</Text>
-                                <Paragraph style={{ marginTop: 10 }}>
-                                    <strong>Ngày đặt:</strong> {dayjs().format('DD/MM/YYYY HH:mm')}<br/>
-                                    <strong>Thanh toán:</strong> {paymentMethod === 'COD' ? 'Tiền mặt' : 'Chuyển khoản'}<br/>
-                                    <strong>Trạng thái:</strong> Chờ xác nhận
-                                </Paragraph>
+                            <Col span={10} style={{ textAlign: 'right' }}>
+                                <h3 style={{ borderBottom: '1px solid #ddd', paddingBottom: '5px' }}>THÔNG TIN ĐƠN</h3>
+                                <p><strong>Ngày đặt:</strong> {dayjs().format('DD/MM/YYYY')}</p>
+                                <p><strong>Thanh toán:</strong> {paymentMethod === 'COD' ? 'Tiền mặt' : 'Chuyển khoản'}</p>
                             </Col>
                         </Row>
 
-                        <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                        {/* Bảng sản phẩm */}
+                        <table style={{ width: '100%', borderCollapse: 'collapse', marginBottom: '10mm' }}>
                             <thead>
-                                <tr style={{ borderBottom: `2px solid ${gold}`, background: '#fcfaf7' }}>
+                                <tr style={{ background: '#f4f4f4', borderBottom: '2px solid #C5A059' }}>
                                     <th style={{ padding: '12px', textAlign: 'left' }}>SẢN PHẨM</th>
                                     <th style={{ padding: '12px', textAlign: 'center' }}>SL</th>
+                                    <th style={{ padding: '12px', textAlign: 'right' }}>ĐƠN GIÁ</th>
                                     <th style={{ padding: '12px', textAlign: 'right' }}>THÀNH TIỀN</th>
                                 </tr>
                             </thead>
                             <tbody>
-                                {checkoutData.items.map((item, i) => (
-                                    <tr key={i} style={{ borderBottom: '1px solid #eee' }}>
-                                        <td style={{ padding: '15px 12px' }}>{item.productName}</td>
-                                        <td style={{ padding: '15px 12px', textAlign: 'center' }}>{item.quantity}</td>
-                                        <td style={{ padding: '15px 12px', textAlign: 'right' }}>{formatCurrency(item.price * item.quantity)}</td>
+                                {cart.items.map(item => (
+                                    <tr key={item.id} style={{ borderBottom: '1px solid #eee' }}>
+                                        <td style={{ padding: '12px' }}>{item.productName}</td>
+                                        <td style={{ padding: '12px', textAlign: 'center' }}>{item.quantity}</td>
+                                        <td style={{ padding: '12px', textAlign: 'right' }}>{formatCurrency(item.price)}</td>
+                                        <td style={{ padding: '12px', textAlign: 'right' }}>{formatCurrency(item.price * item.quantity)}</td>
                                     </tr>
                                 ))}
                             </tbody>
                         </table>
 
-                        <div style={{ marginTop: '20mm', float: 'right', width: '250px' }}>
-                            <div style={{ display: 'flex', justifyContent: 'space-between', padding: '10px 0', borderTop: `2px solid ${darkNavy}` }}>
-                                <Title level={4} style={{ margin: 0 }}>TỔNG CỘNG</Title>
-                                <Title level={4} style={{ margin: 0, color: gold }}>{formatCurrency(checkoutData.totalAmount)}</Title>
+                        {/* Tổng cộng */}
+                        <div style={{ float: 'right', width: '200px', textAlign: 'right' }}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', padding: '5px 0' }}>
+                                <span>Tạm tính:</span>
+                                <span>{formatCurrency(cart.totalAmount)}</span>
+                            </div>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', padding: '5px 0' }}>
+                                <span>Vận chuyển:</span>
+                                <span>Miễn phí</span>
+                            </div>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', padding: '10px 0', borderTop: '2px solid #C5A059', marginTop: '5px' }}>
+                                <strong style={{ fontSize: '18px' }}>TỔNG CỘNG:</strong>
+                                <strong style={{ fontSize: '18px', color: gold }}>{formatCurrency(cart.totalAmount)}</strong>
                             </div>
                         </div>
-                        <div style={{ clear: 'both', paddingTop: '30mm', textAlign: 'center' }}>
-                            <Text italic type="secondary">Cảm ơn quý khách đã tin tưởng Jewelry Luxury!</Text>
+
+                        <div style={{ clear: 'both', marginTop: '30mm', textAlign: 'center' }}>
+                            <p style={{ fontStyle: 'italic', color: '#666' }}>Cảm ơn quý khách đã lựa chọn Jewelry Luxury. Chúc quý khách luôn rạng rỡ!</p>
+                            <p style={{ fontSize: '10px', marginTop: '10px' }}>Hóa đơn này có giá trị xác nhận giao dịch online.</p>
                         </div>
                     </div>
                 </div>
             </div>
 
             <style>{`
-                .luxury-card { border-radius: 4px; padding: 20px; box-shadow: 0 4px 25px rgba(0,0,0,0.05); }
-                .order-summary-card { border-radius: 4px; border-top: 5px solid ${gold}; box-shadow: 0 10px 40px rgba(0,0,0,0.08); padding: 20px; }
-                .luxury-input { border-radius: 2px !important; border: 1px solid #e0e0e0; transition: all 0.3s; }
-                .luxury-input:focus { border-color: ${gold}; box-shadow: 0 0 0 2px rgba(197, 160, 89, 0.1); }
-                .luxury-radio-group { width: 100%; display: flex; flex-direction: column; gap: 12px; }
-                .luxury-radio-group .ant-radio-button-wrapper { border-radius: 2px !important; height: 55px !important; line-height: 55px !important; border: 1px solid #e0e0e0 !important; }
+                .checkout-card { border-radius: 0; box-shadow: 0 4px 20px rgba(0,0,0,0.05); }
+                .receipt-card { border-radius: 0; background: #fff; border-top: 4px solid ${gold}; box-shadow: 0 10px 30px rgba(0,0,0,0.1); }
+                .luxury-input { border-radius: 0 !important; border: 1px solid #d9d9d9; padding: 10px 15px; }
+                .receipt-item { display: flex; justify-content: space-between; margin-bottom: 15px; }
+                .luxury-radio-group { width: 100%; display: flex; flex-direction: column; gap: 10px; }
+                .luxury-radio-group .ant-radio-button-wrapper { width: 100% !important; border-radius: 0 !important; height: 50px !important; line-height: 50px !important; }
                 .ant-radio-button-wrapper-checked { border-color: ${gold} !important; color: ${gold} !important; background: #fdfaf5 !important; }
-                .item-row { display: flex; justify-content: space-between; margin-bottom: 18px; }
-                .checkout-submit-btn { height: 65px !important; background: ${darkNavy} !important; border: none !important; border-radius: 2px !important; font-weight: 600; letter-spacing: 1px; margin-top: 30px; font-size: 16px; }
-                .company-info-area { padding: 20px; background: #f9f9f9; border-left: 4px solid ${gold}; margin-top: 20px; }
             `}</style>
         </div>
     );
