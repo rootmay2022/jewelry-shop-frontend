@@ -52,7 +52,7 @@ const CartItem = ({ item }) => {
                 </Col>
             </Row>
         </Card>
-    );
+    );x 
 };
 
 export default CartItem;

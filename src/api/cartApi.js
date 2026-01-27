@@ -11,9 +11,12 @@ export const addItemToCart = async (item) => {
   return response.data;
 };
 
+// src/api/cartApi.js (hoặc nơi ní định nghĩa updateCartItem)
+
 export const updateCartItem = async (itemId, quantity) => {
-  const response = await apiClient.put(`/cart/items/${itemId}?quantity=${quantity}`);
-  return response.data;
+    // Đảm bảo không gửi chuỗi "null" lên Server
+    const response = await axios.put(`/api/cart/items/${itemId}?quantity=${quantity}`);
+    return response.data;
 };
 
 export const removeItemFromCart = async (itemId) => {

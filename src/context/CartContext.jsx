@@ -63,28 +63,40 @@ export const CartProvider = ({ children }) => {
   };
 
   // CHỈNH SỬA 2: Chặn khi cập nhật số lượng tại Cart Page
-  const updateItemQuantity = async (itemId, quantity) => {
-    const item = cart?.items?.find(i => i.id === itemId);
-    const stock = item?.product?.stockQuantity;
+  // src/context/CartContext.jsx
 
-    if (stock !== undefined && quantity > stock) {
-      message.warning(`Trong kho chỉ còn ${stock} sản phẩm.`);
-      return;
-    }
+const updateItemQuantity = async (itemId, quantity) => {
+  // CHẶN NGAY: Nếu quantity là null, undefined hoặc không phải số thì không làm gì cả
+  if (quantity === null || quantity === undefined || isNaN(quantity)) {
+    return;
+  }
 
-    setLoading(true);
-    try {
-      const response = await updateCartItem(itemId, quantity);
-      if (response.success) {
-        setCart(response.data);
-      }
-    } catch (error) {
-      console.error('Failed to update cart item:', error);
-      message.error('Cập nhật số lượng thất bại.');
-    } finally {
-      setLoading(false);
+  const item = cart?.items?.find(i => i.id === itemId);
+  
+  // Lấy stock chuẩn từ field phẳng hoặc lồng trong product
+  const stock = item?.stockQuantity ?? item?.product?.stockQuantity;
+
+  if (stock !== undefined && quantity > stock) {
+    message.warning(`Trong kho chỉ còn ${stock} sản phẩm.`);
+    return;
+  }
+
+  setLoading(true); // Đưa cái này lên trước try
+  try {
+    // ÉP KIỂU: Chắc chắn quantity là số nguyên trước khi gửi
+    const response = await updateCartItem(itemId, parseInt(quantity, 10));
+    if (response.success) {
+      setCart(response.data);
+    } else {
+      message.error(response.message || 'Cập nhật thất bại');
     }
-  };
+  } catch (error) {
+    console.error('Failed to update cart item:', error);
+    message.error('Cập nhật số lượng thất bại.');
+  } finally {
+    setLoading(false);
+  }
+};
 
   const removeFromCart = async (itemId) => {
     setLoading(true);
