@@ -8,6 +8,7 @@ const { Text } = Typography;
 
 const CartItem = ({ item }) => {
     const { updateItemQuantity, removeFromCart } = useCart();
+    console.log("DỮ LIỆU TỪ BACKEND ĐÂY NÍ:", item);
     
     // Lấy đúng stockQuantity từ Backend (cái số 40 trong DB ní vừa fix)
     // Ưu tiên lấy trực tiếp từ item, nếu không có thì mới tìm trong product
