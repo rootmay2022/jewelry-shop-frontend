@@ -3,7 +3,6 @@ import { Row, Col, Card, Statistic, Spin, message, Typography, Button, Table, Ta
 import { 
     ShoppingCartOutlined, 
     DollarCircleOutlined, 
-    FileExcelOutlined, 
     UserOutlined,
     ShoppingOutlined,
     ReloadOutlined 
@@ -11,54 +10,77 @@ import {
 import { PieChart, Pie, Cell, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 
 import { getDashboardStats } from '../../api/adminApi';
+// Giả sử ní có API này để lấy danh sách đơn chi tiết
+import { getAllOrdersAdmin } from '../../api/orderApi'; 
 import formatCurrency from '../../utils/formatCurrency';
 import dayjs from 'dayjs';
 
 const { Title, Text } = Typography; 
-// Palette màu sắc cho các trạng thái đơn hàng
 const COLORS = {
-    'PENDING': '#faad14',   // Vàng
-    'DELIVERED': '#52c41a', // Xanh lá
-    'CANCELLED': '#ff4d4f', // Đỏ
-    'SHIPPING': '#1890ff',  // Xanh dương
-    'CONFIRMED': '#722ed1'  // Tím
+    'PENDING': '#faad14',
+    'DELIVERED': '#52c41a',
+    'CANCELLED': '#ff4d4f',
+    'SHIPPING': '#1890ff',
+    'CONFIRMED': '#722ed1'
 };
 
 const Dashboard = () => {
     const [loading, setLoading] = useState(true);
     const [stats, setStats] = useState({
         totalRevenue: 0,
+        actualRevenue: 0, // Doanh thu thực thu
         totalOrders: 0,
         totalUsers: 0,
         totalProducts: 0,
-        pieData: []
+        pieData: [],
+        recentOrders: []
     });
 
     const fetchData = async () => {
         setLoading(true);
         try {
-            const res = await getDashboardStats();
-            if (res.success) {
-                const d = res.data;
+            // Gọi song song cả Thống kê và Danh sách đơn hàng chi tiết
+            const [statRes, orderRes] = await Promise.all([
+                getDashboardStats(),
+                getAllOrdersAdmin() 
+            ]);
 
-                // 1. Chuyển đổi Object ordersByStatus thành mảng cho biểu đồ Recharts
-                // Từ { PENDING: 3, DELIVERED: 1... } -> [{ name: 'PENDING', value: 3 }...]
-                const formattedPieData = Object.entries(d.ordersByStatus).map(([key, value]) => ({
-                    name: key,
-                    value: value
-                })).filter(item => item.value > 0); // Chỉ hiện những cái có dữ liệu
+            if (statRes.success) {
+                const d = statRes.data;
+
+                // 1. Tính toán thực thu từ mảng revenueByDay (hoặc từ danh sách đơn đã giao)
+                // Theo dữ liệu của ní: Đơn #13 (5.6tr) + #14 (3.1tr) = 8.7tr
+                const actualRev = d.revenueByDay.reduce((sum, item) => sum + item.revenue, 0);
+
+                // 2. Format dữ liệu biểu đồ tròn
+                const formattedPieData = Object.entries(d.ordersByStatus)
+                    .map(([key, value]) => ({ name: key, value }))
+                    .filter(item => item.value > 0);
+
+                // 3. Lấy 5 đơn hàng mới nhất từ danh sách chi tiết
+                const orders = orderRes?.data || [];
+                const latestOrders = orders.slice(0, 5).map(o => ({
+                    key: o.id,
+                    id: `#${o.id}`,
+                    customer: o.fullName || o.username || 'Khách hàng',
+                    amount: o.totalAmount || o.total_amount,
+                    status: o.status,
+                    date: dayjs(o.orderDate || o.createdAt).format('DD/MM/YYYY HH:mm')
+                }));
 
                 setStats({
                     totalRevenue: d.totalRevenue,
+                    actualRevenue: actualRev, // Con số 8.7tr sẽ nằm ở đây
                     totalOrders: d.totalOrders,
                     totalUsers: d.totalUsers,
                     totalProducts: d.totalProducts,
-                    pieData: formattedPieData
+                    pieData: formattedPieData,
+                    recentOrders: latestOrders
                 });
             }
         } catch (error) {
             console.error('Lỗi Dashboard:', error);
-            message.error('Không thể lấy dữ liệu thống kê!');
+            message.error('Lỗi đồng bộ dữ liệu!');
         } finally {
             setLoading(false);
         }
@@ -66,58 +88,49 @@ const Dashboard = () => {
 
     useEffect(() => { fetchData(); }, []);
 
-    if (loading) return <div style={{ textAlign: 'center', padding: '100px' }}><Spin size="large" /></div>;
+    if (loading) return <div style={{ textAlign: 'center', padding: '100px' }}><Spin size="large" tip="Đang tính toán doanh thu..." /></div>;
 
     return (
         <div style={{ padding: '24px', background: '#f0f2f5', minHeight: '100vh' }}>
             <Row justify="space-between" align="middle" style={{ marginBottom: 24 }}>
                 <Col>
-                    <Title level={2} style={{ margin: 0 }}>📊 TỔNG QUAN HỆ THỐNG</Title>
-                    <Text type="secondary">Dữ liệu cập nhật mới nhất từ máy chủ</Text>
+                    <Title level={2} style={{ margin: 0 }}>📊 TỔNG QUAN KINH DOANH</Title>
+                    <Text type="secondary">Thống kê doanh thu thực tế (Dựa trên các đơn đã hoàn tất)</Text>
                 </Col>
                 <Col>
-                    <Button icon={<ReloadOutlined />} onClick={fetchData} type="primary" ghost>Làm mới</Button>
+                    <Button icon={<ReloadOutlined />} onClick={fetchData} type="primary">Làm mới dữ liệu</Button>
                 </Col>
             </Row>
 
-            {/* Các thẻ Statistic khớp 100% với JSON */}
+            {/* Thẻ thống kê */}
             <Row gutter={[16, 16]}>
                 <Col xs={24} sm={12} lg={6}>
-                    <Card bordered={false}>
+                    <Card bordered={false} hoverable>
                         <Statistic 
-                            title="TỔNG DOANH THU" 
-                            value={stats.totalRevenue} 
+                            title="THỰC THU (ĐÃ GIAO)" 
+                            value={stats.actualRevenue} 
                             formatter={v => formatCurrency(v)}
                             valueStyle={{ color: '#52c41a', fontWeight: 'bold' }}
                             prefix={<DollarCircleOutlined />} 
                         />
+                        <Text type="secondary" style={{ fontSize: '12px' }}>
+                            Tổng treo (Pending): {formatCurrency(stats.totalRevenue - stats.actualRevenue)}
+                        </Text>
                     </Card>
                 </Col>
                 <Col xs={24} sm={12} lg={6}>
                     <Card bordered={false}>
-                        <Statistic 
-                            title="TỔNG ĐƠN HÀNG" 
-                            value={stats.totalOrders} 
-                            prefix={<ShoppingCartOutlined style={{ color: '#1890ff' }} />} 
-                        />
+                        <Statistic title="ĐƠN HÀNG" value={stats.totalOrders} prefix={<ShoppingCartOutlined color="#1890ff" />} />
                     </Card>
                 </Col>
                 <Col xs={24} sm={12} lg={6}>
                     <Card bordered={false}>
-                        <Statistic 
-                            title="KHÁCH HÀNG" 
-                            value={stats.totalUsers} 
-                            prefix={<UserOutlined style={{ color: '#722ed1' }} />} 
-                        />
+                        <Statistic title="KHÁCH HÀNG" value={stats.totalUsers} prefix={<UserOutlined />} />
                     </Card>
                 </Col>
                 <Col xs={24} sm={12} lg={6}>
                     <Card bordered={false}>
-                        <Statistic 
-                            title="SẢN PHẨM" 
-                            value={stats.totalProducts} 
-                            prefix={<ShoppingOutlined style={{ color: '#fa8c16' }} />} 
-                        />
+                        <Statistic title="SẢN PHẨM" value={stats.totalProducts} prefix={<ShoppingOutlined />} />
                     </Card>
                 </Col>
             </Row>
@@ -125,58 +138,38 @@ const Dashboard = () => {
             
 
             <Row gutter={[16, 16]} style={{ marginTop: 24 }}>
-                {/* Biểu đồ trạng thái */}
                 <Col xs={24} lg={10}>
-                    <Card title="Phân bổ trạng thái đơn hàng" bordered={false}>
-                        <div style={{ height: 350 }}>
+                    <Card title="Phân bổ trạng thái" bordered={false}>
+                        <div style={{ height: 300 }}>
                             <ResponsiveContainer width="100%" height="100%">
                                 <PieChart>
-                                    <Pie 
-                                        data={stats.pieData} 
-                                        innerRadius={70} 
-                                        outerRadius={100} 
-                                        paddingAngle={5} 
-                                        dataKey="value"
-                                        label={({name, percent}) => `${name} ${(percent * 100).toFixed(0)}%`}
-                                    >
+                                    <Pie data={stats.pieData} innerRadius={60} outerRadius={90} dataKey="value">
                                         {stats.pieData.map((entry, index) => (
                                             <Cell key={`cell-${index}`} fill={COLORS[entry.name] || '#8884d8'} />
                                         ))}
                                     </Pie>
-                                    <Tooltip formatter={(value) => [`${value} đơn hàng`, 'Số lượng']} />
-                                    <Legend verticalAlign="bottom" height={36}/>
+                                    <Tooltip />
+                                    <Legend />
                                 </PieChart>
                             </ResponsiveContainer>
                         </div>
                     </Card>
                 </Col>
 
-                {/* Gợi ý thêm: Bảng phân tích trạng thái */}
                 <Col xs={24} lg={14}>
-                    <Card title="Chi tiết số lượng đơn" bordered={false}>
+                    <Card title="Danh sách đơn hàng vừa đặt" bordered={false}>
                         <Table 
-                            dataSource={stats.pieData}
+                            dataSource={stats.recentOrders}
                             pagination={false}
-                            rowKey="name"
+                            size="small"
                             columns={[
-                                { 
-                                    title: 'Trạng thái', 
-                                    dataIndex: 'name', 
-                                    render: (text) => (
-                                        <Tag color={COLORS[text]} style={{fontWeight: 'bold'}}>{text}</Tag>
-                                    ) 
-                                },
-                                { 
-                                    title: 'Số lượng đơn', 
-                                    dataIndex: 'value', 
-                                    render: (val) => <Text strong>{val} đơn</Text>
-                                },
-                                {
-                                    title: 'Tỉ lệ',
-                                    render: (_, record) => (
-                                        <span>{((record.value / stats.totalOrders) * 100).toFixed(1)}%</span>
-                                    )
-                                }
+                                { title: 'Mã đơn', dataIndex: 'id' },
+                                { title: 'Khách hàng', dataIndex: 'customer' },
+                                { title: 'Số tiền', dataIndex: 'amount', render: v => <b>{formatCurrency(v)}</b> },
+                                { title: 'Trạng thái', dataIndex: 'status', render: s => (
+                                    <Tag color={COLORS[s]}>{s}</Tag>
+                                )},
+                                { title: 'Ngày đặt', dataIndex: 'date' }
                             ]}
                         />
                     </Card>
