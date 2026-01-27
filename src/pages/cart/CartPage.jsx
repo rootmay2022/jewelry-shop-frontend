@@ -18,7 +18,19 @@ const CartPage = () => {
     };
 
     // Kiểm tra xem có sản phẩm nào vượt quá tồn kho không
-    const invalidItems = cart?.items?.filter(item => item.quantity > (item.product?.stockQuantity || 0)) || [];
+    const invalidItems = cart?.items?.filter(item => {
+        // Lấy tồn kho (thử nhiều trường hợp để tránh undefined)
+        const stock = item.product?.stockQuantity ?? item.stockQuantity;
+        
+        // CHỈ BÁO LỖI KHI: 
+        // 1. Có dữ liệu tồn kho (không phải null/undefined)
+        // 2. Và số lượng mua thực sự lớn hơn tồn kho
+        if (typeof stock === 'number') {
+            return item.quantity > stock;
+        }
+        return false; // Nếu không có dữ liệu kho thì coi như không lỗi
+    }) || [];
+    
     const hasError = invalidItems.length > 0;
 
     if (loading && !cart) {
@@ -35,9 +47,6 @@ const CartPage = () => {
             <div style={{ textAlign: 'center', padding: '120px 20px', background: theme.bg, minHeight: '80vh' }}>
                 <ShoppingCartOutlined style={{ fontSize: '64px', color: '#d9d9d9', marginBottom: '24px' }} />
                 <Title level={2} style={{ fontFamily: '"Playfair Display", serif' }}>Giỏ hàng của bạn đang trống</Title>
-                <Paragraph style={{ color: '#888', marginBottom: '32px' }}>
-                    Có vẻ như quý khách chưa chọn được món đồ ưng ý nào cho bộ sưu tập của mình.
-                </Paragraph>
                 <Button 
                     type="primary" 
                     size="large"
@@ -68,17 +77,16 @@ const CartPage = () => {
                 </div>
                 <Divider style={{ margin: '20px 0 40px' }} />
 
-                {/* Cảnh báo nếu có lỗi tồn kho */}
                 {hasError && (
                     <Alert
                         message="Lỗi số lượng sản phẩm"
                         description={
                             <div>
-                                <Text>Một số sản phẩm vượt quá tồn kho thực tế. Vui lòng giảm số lượng để thanh toán.</Text>
+                                <Text>Một số sản phẩm vượt quá tồn kho thực tế.</Text>
                                 <ul style={{ marginTop: 8 }}>
                                     {invalidItems.map(item => (
                                         <li key={item.id}>
-                                            <Text strong>{item.product?.name}</Text> (Chỉ còn {item.product?.stockQuantity} món)
+                                            <Text strong>{item.productName}</Text> (Chỉ còn {item.product?.stockQuantity ?? 0} món)
                                         </li>
                                     ))}
                                 </ul>
@@ -95,23 +103,18 @@ const CartPage = () => {
             <div style={{ padding: '0 10%' }}>
                 <Row gutter={[40, 40]}>
                     <Col xs={24} lg={16}>
-                        <div style={{ marginBottom: '30px' }}>
-                            {cart.items.map((item, index) => (
-                                <div key={item.id}>
-                                    <CartItem item={item} />
-                                    {index !== cart.items.length - 1 && <Divider style={{ margin: '12px 0' }} />}
-                                </div>
-                            ))}
-                        </div>
+                        {cart.items.map((item, index) => (
+                            <CartItem key={item.id} item={item} />
+                        ))}
 
-                        <Card style={{ background: '#fff', border: '1px dashed #d9d9d9', borderRadius: 0 }}>
+                        <Card style={{ background: '#fff', border: '1px dashed #d9d9d9', borderRadius: 0, marginTop: 20 }}>
                             <Row gutter={[24, 24]}>
                                 <Col xs={24} md={12}>
                                     <Space align="start">
                                         <SafetyCertificateOutlined style={{ color: theme.gold, fontSize: '24px' }} />
                                         <div>
                                             <Text strong>Cam kết chất lượng</Text><br/>
-                                            <Text type="secondary" style={{ fontSize: '12px' }}>Sản phẩm được bảo hành vĩnh viễn và kiểm định chính hãng.</Text>
+                                            <Text type="secondary" style={{ fontSize: '12px' }}>Sản phẩm được bảo hành vĩnh viễn.</Text>
                                         </div>
                                     </Space>
                                 </Col>
@@ -120,7 +123,7 @@ const CartPage = () => {
                                         <ShoppingCartOutlined style={{ color: theme.gold, fontSize: '24px' }} />
                                         <div>
                                             <Text strong>Vận chuyển ưu tiên</Text><br/>
-                                            <Text type="secondary" style={{ fontSize: '12px' }}>Miễn phí vận chuyển bảo đảm cho mọi đơn hàng giá trị cao.</Text>
+                                            <Text type="secondary" style={{ fontSize: '12px' }}>Miễn phí vận chuyển bảo đảm.</Text>
                                         </div>
                                     </Space>
                                 </Col>
@@ -130,7 +133,6 @@ const CartPage = () => {
 
                     <Col xs={24} lg={8}>
                         <div style={{ position: 'sticky', top: '100px' }}>
-                            {/* QUAN TRỌNG: Truyền disableCheckout để nút thanh toán tự khóa */}
                             <CartSummary 
                                 totalAmount={cart.totalAmount} 
                                 disableCheckout={hasError} 
