@@ -6,7 +6,7 @@ import {
 import { 
     PlusOutlined, DeleteOutlined, EditOutlined, 
     ShoppingOutlined, WarningOutlined, DollarOutlined, SearchOutlined, ReloadOutlined,
-    PercentageOutlined, TagOutlined // Thay TicketOutlined bằng TagOutlined để fix lỗi build
+    PercentageOutlined, TagOutlined 
 } from '@ant-design/icons';
 import { getAllProducts, createProduct, updateProduct, deleteProduct } from '../../api/productApi';
 import { getAllCategories } from '../../api/categoryApi';
@@ -17,7 +17,6 @@ const { TextArea } = Input;
 const { Title, Text } = Typography;
 
 const ProductManagement = () => {
-    // States cũ
     const [products, setProducts] = useState([]);
     const [filteredProducts, setFilteredProducts] = useState([]);
     const [categories, setCategories] = useState([]);
@@ -27,7 +26,6 @@ const ProductManagement = () => {
     const [submitting, setSubmitting] = useState(false);
     const [form] = Form.useForm();
 
-    // --- NEW STATES CHO VOUCHER ---
     const [isVoucherModalVisible, setIsVoucherModalVisible] = useState(false);
     const [vouchers, setVouchers] = useState([
         { id: 1, code: 'TET2026', type: 'fixed', value: 100000, minOrder: 500000, status: 'active' },
@@ -92,7 +90,6 @@ const ProductManagement = () => {
         }
     };
 
-    // --- NEW HANDLERS CHO VOUCHER ---
     const handleAddVoucher = (values) => {
         const newVoucher = { ...values, id: Date.now(), status: 'active' };
         setVouchers([...vouchers, newVoucher]);
@@ -126,12 +123,22 @@ const ProductManagement = () => {
             title: 'Giá sau giảm', 
             key: 'discount',
             render: (_, record) => {
+                const price = record.price || 0;
                 const discount = record.discountValue || 0;
-                const finalPrice = record.discountType === 'percent' ? record.price * (1 - discount / 100) : record.price - discount;
+                
+                // FIX: Nếu không có giảm giá, hiển thị giá gốc bình thường
+                if (discount <= 0) {
+                    return <Text strong>{formatCurrency(price)}</Text>;
+                }
+
+                const finalPrice = record.discountType === 'percent' 
+                    ? price * (1 - discount / 100) 
+                    : price - discount;
+
                 return (
                     <Space direction="vertical" size={0}>
                         <Text type="danger" strong>{formatCurrency(finalPrice)}</Text>
-                        {discount > 0 && <Tag color="volcano">-{discount}{record.discountType === 'percent' ? '%' : 'đ'}</Tag>}
+                        <Tag color="volcano">-{discount}{record.discountType === 'percent' ? '%' : 'đ'}</Tag>
                     </Space>
                 );
             }
@@ -178,7 +185,6 @@ const ProductManagement = () => {
 
             <Table columns={columns} dataSource={filteredProducts} loading={loading} rowKey="id" bordered pagination={{ pageSize: 5 }} />
 
-            {/* MODAL SẢN PHẨM */}
             <Modal title={editingProduct ? '📑 CẬP NHẬT' : '🆕 THÊM MỚI'} open={isModalVisible} onCancel={() => setIsModalVisible(false)} onOk={() => form.submit()} confirmLoading={submitting}>
                 <Form form={form} layout="vertical" onFinish={handleFinish}>
                     <Row gutter={16}>
@@ -207,7 +213,6 @@ const ProductManagement = () => {
                 </Form>
             </Modal>
 
-            {/* --- NEW MODAL: QUẢN LÝ VOUCHER --- */}
             <Modal
                 title={<span><TagOutlined /> QUẢN LÝ MÃ GIẢM GIÁ TOÀN SHOP</span>}
                 open={isVoucherModalVisible}
