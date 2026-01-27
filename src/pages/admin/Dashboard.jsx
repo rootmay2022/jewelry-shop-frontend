@@ -36,55 +36,59 @@ const Dashboard = () => {
         recentOrders: []
     });
 
-    const fetchData = async () => {
-        setLoading(true);
-        try {
-            // Gọi song song cả Thống kê và Danh sách đơn hàng chi tiết
-            const [statRes, orderRes] = await Promise.all([
-                getDashboardStats(),
-                getAllOrdersAdmin() 
-            ]);
+   const fetchData = async () => {
+    setLoading(true);
+    try {
+        const [statRes, orderRes] = await Promise.all([
+            getDashboardStats(),
+            getAllOrdersAdmin() 
+        ]);
 
-            if (statRes.success) {
-                const d = statRes.data;
+        if (statRes.success) {
+            const d = statRes.data;
+            // API trả về mảng orders, nếu không có thì mặc định mảng rỗng
+            const orders = orderRes?.data || [];
 
-                // 1. Tính toán thực thu từ mảng revenueByDay (hoặc từ danh sách đơn đã giao)
-                // Theo dữ liệu của ní: Đơn #13 (5.6tr) + #14 (3.1tr) = 8.7tr
-                const actualRev = d.revenueByDay.reduce((sum, item) => sum + item.revenue, 0);
+            // 1. FIX DOANH THU: Chỉ tính tiền những đơn đã DELIVERED
+            // Đơn #13 (5.6tr) + #14 (3.1tr) = 8.7tr. Đơn PENDING sẽ không cộng vào đây.
+            const realRevenue = orders
+                .filter(o => o.status === 'DELIVERED')
+                .reduce((sum, o) => sum + parseFloat(o.totalAmount || o.total_amount || 0), 0);
 
-                // 2. Format dữ liệu biểu đồ tròn
-                const formattedPieData = Object.entries(d.ordersByStatus)
-                    .map(([key, value]) => ({ name: key, value }))
-                    .filter(item => item.value > 0);
+            // 2. FIX GIỜ GIẤC: Ép định dạng DD/MM/YYYY HH:mm:ss
+            // Nhìn ảnh DB của ní là 'order_date', tui sẽ ưu tiên lấy trường đó
+            const latestOrders = orders.slice(0, 5).map(o => ({
+                key: o.id,
+                id: `#${o.id}`,
+                customer: o.fullName || o.username || 'Khách hàng',
+                amount: o.totalAmount || o.total_amount,
+                status: o.status,
+                // Dùng dayjs format lại cho chuẩn VN
+                date: dayjs(o.order_date || o.orderDate || o.createdAt).format('DD/MM/YYYY HH:mm:ss')
+            }));
 
-                // 3. Lấy 5 đơn hàng mới nhất từ danh sách chi tiết
-                const orders = orderRes?.data || [];
-                const latestOrders = orders.slice(0, 5).map(o => ({
-                    key: o.id,
-                    id: `#${o.id}`,
-                    customer: o.fullName || o.username || 'Khách hàng',
-                    amount: o.totalAmount || o.total_amount,
-                    status: o.status,
-                    date: dayjs(o.orderDate || o.createdAt).format('DD/MM/YYYY HH:mm')
-                }));
+            // 3. Format PieData
+            const formattedPieData = Object.entries(d.ordersByStatus)
+                .map(([key, value]) => ({ name: key, value }))
+                .filter(item => item.value > 0);
 
-                setStats({
-                    totalRevenue: d.totalRevenue,
-                    actualRevenue: actualRev, // Con số 8.7tr sẽ nằm ở đây
-                    totalOrders: d.totalOrders,
-                    totalUsers: d.totalUsers,
-                    totalProducts: d.totalProducts,
-                    pieData: formattedPieData,
-                    recentOrders: latestOrders
-                });
-            }
-        } catch (error) {
-            console.error('Lỗi Dashboard:', error);
-            message.error('Lỗi đồng bộ dữ liệu!');
-        } finally {
-            setLoading(false);
+            setStats({
+                totalRevenue: d.totalRevenue, // Đây là con số 16tr (tổng ảo)
+                actualRevenue: realRevenue,   // Đây là con số 8.7tr (thực thu)
+                totalOrders: d.totalOrders,
+                totalUsers: d.totalUsers,
+                totalProducts: d.totalProducts,
+                pieData: formattedPieData,
+                recentOrders: latestOrders
+            });
         }
-    };
+    } catch (error) {
+        console.error('Lỗi Dashboard:', error);
+        message.error('Không thể đồng bộ dữ liệu!');
+    } finally {
+        setLoading(false);
+    }
+};
 
     useEffect(() => { fetchData(); }, []);
 
