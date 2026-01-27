@@ -1,6 +1,6 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { Row, Col, Card, Form, Input, Radio, Button, Typography, Spin, App, Modal, Switch, Divider, Badge, Space } from 'antd';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom'; // Thêm useLocation
 import { ShoppingBag, CreditCard, Truck, Building2, ShieldCheck, ReceiptText, Printer } from 'lucide-react';
 import { useCart } from '../../context/CartContext';
 import { useAuth } from '../../context/AuthContext';
@@ -17,16 +17,43 @@ const { TextArea } = Input;
 const CheckoutPage = () => {
     const { cart, clearCart } = useCart();
     const { user } = useAuth();
+    const location = useLocation(); // Bắt dữ liệu từ trang Chi tiết sản phẩm gửi qua
     const [loading, setLoading] = useState(false);
     const [isCompany, setIsCompany] = useState(false);
     const navigate = useNavigate();
     const [form] = Form.useForm();
     const { message } = App.useApp();
     const paymentMethod = Form.useWatch('paymentMethod', form);
-    const invoiceRef = useRef(null); // Ref để in hóa đơn
+    const invoiceRef = useRef(null);
 
     const gold = '#C5A059';
     const darkNavy = '#001529';
+
+    // --- LOGIC PHÂN TÍCH DỮ LIỆU ĐẦU VÀO (GIỮ NGUYÊN TÍNH NĂNG MUA NGAY) ---
+    const checkoutData = useMemo(() => {
+        // Nếu có dữ liệu "Mua ngay" từ location.state
+        if (location.state && location.state.buyNow && location.state.product) {
+            const item = location.state.product;
+            const quantity = location.state.quantity || 1;
+            return {
+                items: [{
+                    id: item.id || item.productId,
+                    productName: item.name || item.productName,
+                    price: item.price,
+                    quantity: quantity,
+                    image: item.image
+                }],
+                totalAmount: item.price * quantity,
+                isBuyNow: true
+            };
+        }
+        // Nếu không thì lấy từ giỏ hàng mặc định
+        return {
+            items: cart?.items || [],
+            totalAmount: cart?.totalAmount || 0,
+            isBuyNow: false
+        };
+    }, [cart, location.state]);
 
     useEffect(() => {
         if (user) {
@@ -42,13 +69,12 @@ const CheckoutPage = () => {
         form.setFieldsValue({ shippingAddress: detailedAddress });
     };
 
-    // --- HÀM XUẤT HÓA ĐƠN PDF SANG TRỌNG ---
     const generatePDF = async (orderId) => {
         const element = invoiceRef.current;
         if (!element) return;
         try {
             const canvas = await html2canvas(element, { 
-                scale: 3, // Tăng độ nét cực cao
+                scale: 3, 
                 useCORS: true,
                 logging: false
             });
@@ -67,7 +93,7 @@ const CheckoutPage = () => {
         const bankId = "MB"; 
         const accountNo = "89999999251105"; 
         const accountName = "NGUYEN KHANH HUNG"; 
-        const qrUrl = `https://img.vietqr.io/image/${bankId}-${accountNo}-compact2.png?amount=${order.totalAmount}&addInfo=${encodeURIComponent(`THANH TOAN DON HANG ${order.id}`)}&accountName=${encodeURIComponent(accountName)}`;
+        const qrUrl = `https://img.vietqr.io/image/${bankId}-${accountNo}-compact2.png?amount=${checkoutData.totalAmount}&addInfo=${encodeURIComponent(`THANH TOAN DON HANG ${order.id}`)}&accountName=${encodeURIComponent(accountName)}`;
 
         Modal.confirm({
             title: <div style={{ fontFamily: 'Playfair Display', fontSize: '20px' }}>THANH TOÁN QUA QR CODE</div>,
@@ -81,7 +107,7 @@ const CheckoutPage = () => {
                     </div>
                     <div style={{ marginTop: '20px', textAlign: 'left', background: '#f9f9f9', padding: '15px', borderRadius: '8px' }}>
                         <Text type="secondary">Số tiền thanh toán:</Text><br/>
-                        <Title level={3} style={{ margin: '0 0 10px 0', color: darkNavy }}>{formatCurrency(order.totalAmount)}</Title>
+                        <Title level={3} style={{ margin: '0 0 10px 0', color: darkNavy }}>{formatCurrency(checkoutData.totalAmount)}</Title>
                         <Text type="secondary">Nội dung chuyển khoản:</Text><br/>
                         <Text strong style={{ color: gold, fontSize: '16px' }}>THANH TOAN DON HANG {order.id}</Text>
                     </div>
@@ -90,7 +116,7 @@ const CheckoutPage = () => {
             okText: 'Tôi đã hoàn tất thanh toán',
             cancelText: 'Quay lại',
             onOk: async () => {
-                await clearCart();
+                if (!checkoutData.isBuyNow) await clearCart();
                 navigate(`/order-success/${order.id}`);
             }
         });
@@ -102,10 +128,10 @@ const CheckoutPage = () => {
             const orderPayload = {
                 ...values,
                 userId: user?.id,
-                totalAmount: cart?.totalAmount || 0,
+                totalAmount: checkoutData.totalAmount,
                 isVAT: isCompany,
-                items: cart.items.map(item => ({
-                    productId: item.id || item.productId,
+                items: checkoutData.items.map(item => ({
+                    productId: item.id,
                     quantity: item.quantity,
                     price: item.price
                 }))
@@ -113,7 +139,6 @@ const CheckoutPage = () => {
 
             const response = await createOrder(orderPayload);
             if (response.success) {
-                // Xuất hóa đơn ngay lập tức
                 message.loading({ content: 'Đang tạo hóa đơn...', key: 'pdf' });
                 await generatePDF(response.data.id);
                 message.success({ content: 'Đã tải hóa đơn!', key: 'pdf', duration: 2 });
@@ -122,7 +147,7 @@ const CheckoutPage = () => {
                     showPaymentQR(response.data);
                 } else {
                     message.success('Đặt hàng thành công!');
-                    await clearCart();
+                    if (!checkoutData.isBuyNow) await clearCart();
                     navigate(`/order-success/${response.data.id}`);
                 }
             }
@@ -133,7 +158,8 @@ const CheckoutPage = () => {
         }
     };
 
-    if (!cart || cart.items.length === 0) {
+    // Sửa điều kiện hiển thị: Nếu không có cả hàng giỏ lẫn hàng mua ngay thì mới Spin
+    if (checkoutData.items.length === 0) {
         return (
             <div style={{ textAlign: 'center', padding: '100px' }}>
                 <Spin size="large" />
@@ -147,7 +173,9 @@ const CheckoutPage = () => {
             <div style={{ maxWidth: '1200px', margin: '0 auto', padding: '0 20px' }}>
                 <div style={{ marginBottom: '30px' }}>
                     <Title level={2} style={{ fontFamily: 'Playfair Display', letterSpacing: '2px' }}>CHECKOUT</Title>
-                    <Text type="secondary"><ShoppingBag size={14} style={{ verticalAlign: 'middle', marginRight: 5 }} /> Túi hàng của bạn đang được chuẩn bị để giao đi</Text>
+                    <Text type="secondary"><ShoppingBag size={14} style={{ verticalAlign: 'middle', marginRight: 5 }} /> 
+                        {checkoutData.isBuyNow ? 'Bạn đang mua trực tiếp sản phẩm này' : 'Túi hàng của bạn đang được chuẩn bị để giao đi'}
+                    </Text>
                 </div>
 
                 <Form form={form} layout="vertical" onFinish={onFinish}>
@@ -210,7 +238,7 @@ const CheckoutPage = () => {
                                 </Title>
                                 <Divider />
                                 <div className="receipt-items">
-                                    {cart.items.map(item => (
+                                    {checkoutData.items.map(item => (
                                         <div key={item.id} className="receipt-item">
                                             <div style={{ flex: 1, paddingRight: 10 }}>
                                                 <Text strong style={{ display: 'block' }}>{item.productName}</Text>
@@ -223,7 +251,7 @@ const CheckoutPage = () => {
                                 <Divider />
                                 <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 20 }}>
                                     <Title level={3} style={{ margin: 0 }}>TỔNG CỘNG</Title>
-                                    <Title level={3} style={{ margin: 0, color: darkNavy }}>{formatCurrency(cart.totalAmount)}</Title>
+                                    <Title level={3} style={{ margin: 0, color: darkNavy }}>{formatCurrency(checkoutData.totalAmount)}</Title>
                                 </div>
                                 
                                 <Button type="primary" htmlType="submit" size="large" block loading={loading}
@@ -236,18 +264,16 @@ const CheckoutPage = () => {
                 </Form>
             </div>
 
-            {/* --- 5. TEMPLATE HÓA ĐƠN PDF (ẨN) --- */}
+            {/* --- TEMPLATE HÓA ĐƠN PDF (Cập nhật dùng checkoutData) --- */}
             <div style={{ position: 'absolute', left: '-9999px', top: '-9999px' }}>
                 <div ref={invoiceRef} style={{ width: '210mm', minHeight: '297mm', padding: '20mm', background: '#fff', color: '#333', fontFamily: '"Times New Roman", Times, serif' }}>
                     <div style={{ border: '2px solid #C5A059', padding: '10mm', height: '100%' }}>
-                        {/* Header */}
                         <div style={{ textAlign: 'center', marginBottom: '15mm' }}>
                             <h1 style={{ color: gold, fontSize: '32px', margin: 0, letterSpacing: '4px' }}>JEWELRY LUXURY</h1>
                             <p style={{ margin: '5px 0', textTransform: 'uppercase', fontSize: '12px' }}>The Essence of Elegance</p>
                             <div style={{ height: '1px', background: gold, width: '50%', margin: '15px auto' }}></div>
                         </div>
 
-                        {/* Thông tin đơn hàng */}
                         <Row gutter={20} style={{ marginBottom: '10mm' }}>
                             <Col span={14}>
                                 <h3 style={{ borderBottom: '1px solid #ddd', paddingBottom: '5px' }}>KHÁCH HÀNG</h3>
@@ -262,7 +288,6 @@ const CheckoutPage = () => {
                             </Col>
                         </Row>
 
-                        {/* Bảng sản phẩm */}
                         <table style={{ width: '100%', borderCollapse: 'collapse', marginBottom: '10mm' }}>
                             <thead>
                                 <tr style={{ background: '#f4f4f4', borderBottom: '2px solid #C5A059' }}>
@@ -273,7 +298,7 @@ const CheckoutPage = () => {
                                 </tr>
                             </thead>
                             <tbody>
-                                {cart.items.map(item => (
+                                {checkoutData.items.map(item => (
                                     <tr key={item.id} style={{ borderBottom: '1px solid #eee' }}>
                                         <td style={{ padding: '12px' }}>{item.productName}</td>
                                         <td style={{ padding: '12px', textAlign: 'center' }}>{item.quantity}</td>
@@ -284,11 +309,10 @@ const CheckoutPage = () => {
                             </tbody>
                         </table>
 
-                        {/* Tổng cộng */}
                         <div style={{ float: 'right', width: '200px', textAlign: 'right' }}>
                             <div style={{ display: 'flex', justifyContent: 'space-between', padding: '5px 0' }}>
                                 <span>Tạm tính:</span>
-                                <span>{formatCurrency(cart.totalAmount)}</span>
+                                <span>{formatCurrency(checkoutData.totalAmount)}</span>
                             </div>
                             <div style={{ display: 'flex', justifyContent: 'space-between', padding: '5px 0' }}>
                                 <span>Vận chuyển:</span>
@@ -296,7 +320,7 @@ const CheckoutPage = () => {
                             </div>
                             <div style={{ display: 'flex', justifyContent: 'space-between', padding: '10px 0', borderTop: '2px solid #C5A059', marginTop: '5px' }}>
                                 <strong style={{ fontSize: '18px' }}>TỔNG CỘNG:</strong>
-                                <strong style={{ fontSize: '18px', color: gold }}>{formatCurrency(cart.totalAmount)}</strong>
+                                <strong style={{ fontSize: '18px', color: gold }}>{formatCurrency(checkoutData.totalAmount)}</strong>
                             </div>
                         </div>
 
