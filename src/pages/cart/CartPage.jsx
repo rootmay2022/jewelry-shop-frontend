@@ -2,42 +2,35 @@ import React from 'react';
 import { useCart } from '../../context/CartContext';
 import { Row, Col, Card, Typography, Button, Spin, Breadcrumb, Divider, Space, Alert } from 'antd';
 import { Link } from 'react-router-dom';
-import { ShoppingCartOutlined, ArrowLeftOutlined, SafetyCertificateOutlined, WarningOutlined } from '@ant-design/icons';
+import { ShoppingCartOutlined, ArrowLeftOutlined, WarningOutlined } from '@ant-design/icons';
 import CartItem from '../../components/cart/CartItem';
 import CartSummary from '../../components/cart/CartSummary';
 
-const { Title, Text, Paragraph } = Typography;
+const { Title, Text } = Typography;
 
 const CartPage = () => {
     const { cart, loading } = useCart();
 
-    const theme = {
-        navy: '#001529',
-        gold: '#C5A059',
-        bg: '#fbfbfb'
-    };
+    const theme = { navy: '#001529', gold: '#C5A059', bg: '#fbfbfb' };
 
-    // Kiểm tra xem có sản phẩm nào vượt quá tồn kho không
+    // Logic kiểm tra lỗi kho (Fix lỗi hiển thị 0 đơn)
     const invalidItems = cart?.items?.filter(item => {
-        // Lấy tồn kho (thử nhiều trường hợp để tránh undefined)
-        const stock = item.product?.stockQuantity ?? item.stockQuantity;
+        // Cố gắng tìm số tồn kho từ mọi ngóc ngách của dữ liệu
+        const stock = item.product?.stockQuantity ?? item.product?.quantity ?? item.stockQuantity;
         
-        // CHỈ BÁO LỖI KHI: 
-        // 1. Có dữ liệu tồn kho (không phải null/undefined)
-        // 2. Và số lượng mua thực sự lớn hơn tồn kho
+        // Nếu tìm thấy số (kể cả số 0) thì mới so sánh
         if (typeof stock === 'number') {
             return item.quantity > stock;
         }
-        return false; // Nếu không có dữ liệu kho thì coi như không lỗi
+        return false;
     }) || [];
     
     const hasError = invalidItems.length > 0;
 
     if (loading && !cart) {
         return (
-            <div style={{ display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', height: '80vh' }}>
-                <Spin size="large" />
-                <Text style={{ marginTop: 20, color: theme.gold, letterSpacing: '2px' }}>ĐANG TẢI GIỎ HÀNG...</Text>
+            <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '80vh' }}>
+                <Spin size="large" tip="ĐANG TẢI GIỎ HÀNG..." />
             </div>
         );
     }
@@ -46,12 +39,8 @@ const CartPage = () => {
         return (
             <div style={{ textAlign: 'center', padding: '120px 20px', background: theme.bg, minHeight: '80vh' }}>
                 <ShoppingCartOutlined style={{ fontSize: '64px', color: '#d9d9d9', marginBottom: '24px' }} />
-                <Title level={2} style={{ fontFamily: '"Playfair Display", serif' }}>Giỏ hàng của bạn đang trống</Title>
-                <Button 
-                    type="primary" 
-                    size="large"
-                    style={{ backgroundColor: theme.navy, borderColor: theme.navy, borderRadius: 0, height: '50px', padding: '0 40px' }}
-                >
+                <Title level={2}>Giỏ hàng của bạn đang trống</Title>
+                <Button type="primary" size="large" style={{ backgroundColor: theme.navy }}>
                     <Link to="/products">TIẾP TỤC MUA SẮM</Link>
                 </Button>
             </div>
@@ -59,88 +48,50 @@ const CartPage = () => {
     }
 
     return (
-        <div style={{ backgroundColor: theme.bg, minHeight: '100vh', paddingBottom: '80px' }}>
-            <div style={{ padding: '40px 10% 20px' }}>
-                <Breadcrumb 
-                    items={[
-                        { title: <Link to="/">Trang chủ</Link> },
-                        { title: 'Giỏ hàng' },
-                    ]} 
+        <div style={{ backgroundColor: theme.bg, minHeight: '100vh', padding: '40px 10%' }}>
+            <Breadcrumb items={[{ title: <Link to="/">Trang chủ</Link> }, { title: 'Giỏ hàng' }]} />
+            
+            <div style={{ marginTop: '20px', display: 'flex', justifyContent: 'space-between' }}>
+                <Title level={1} style={{ fontFamily: '"Playfair Display", serif' }}>Túi Mua Sắm ({cart.items.length})</Title>
+                <Link to="/products" style={{ color: theme.gold, fontWeight: '600' }}><ArrowLeftOutlined /> TIẾP TỤC CHỌN</Link>
+            </div>
+            
+            <Divider />
+
+            {hasError && (
+                <Alert
+                    message="Lỗi số lượng sản phẩm"
+                    description={
+                        <ul>
+                            {invalidItems.map(item => {
+                                const avail = item.product?.stockQuantity ?? item.product?.quantity ?? item.stockQuantity ?? 0;
+                                return (
+                                    <li key={item.id}>
+                                        <Text strong>{item.productName}</Text>: Chỉ còn <Text strong type="danger">{avail}</Text> món trong kho.
+                                    </li>
+                                );
+                            })}
+                        </ul>
+                    }
+                    type="error"
+                    showIcon
+                    icon={<WarningOutlined />}
+                    style={{ marginBottom: 24 }}
                 />
-                <div style={{ marginTop: '20px', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end' }}>
-                    <Title level={1} style={{ margin: 0, fontFamily: '"Playfair Display", serif', fontSize: '36px', color: theme.navy }}>
-                        Túi Mua Sắm ({cart.items.length})
-                    </Title>
-                    <Link to="/products" style={{ color: theme.gold, fontWeight: '600' }}>
-                        <ArrowLeftOutlined /> TIẾP TỤC CHỌN ĐỒ
-                    </Link>
-                </div>
-                <Divider style={{ margin: '20px 0 40px' }} />
+            )}
 
-                {hasError && (
-                    <Alert
-                        message="Lỗi số lượng sản phẩm"
-                        description={
-                            <div>
-                                <Text>Một số sản phẩm vượt quá tồn kho thực tế.</Text>
-                                <ul style={{ marginTop: 8 }}>
-                                    {invalidItems.map(item => (
-                                        <li key={item.id}>
-                                            <Text strong>{item.productName}</Text> (Chỉ còn {item.product?.stockQuantity ?? 0} món)
-                                        </li>
-                                    ))}
-                                </ul>
-                            </div>
-                        }
-                        type="error"
-                        showIcon
-                        icon={<WarningOutlined />}
-                        style={{ marginBottom: 24, borderRadius: 0, borderLeft: '5px solid #ff4d4f' }}
-                    />
-                )}
-            </div>
-
-            <div style={{ padding: '0 10%' }}>
-                <Row gutter={[40, 40]}>
-                    <Col xs={24} lg={16}>
-                        {cart.items.map((item, index) => (
-                            <CartItem key={item.id} item={item} />
-                        ))}
-
-                        <Card style={{ background: '#fff', border: '1px dashed #d9d9d9', borderRadius: 0, marginTop: 20 }}>
-                            <Row gutter={[24, 24]}>
-                                <Col xs={24} md={12}>
-                                    <Space align="start">
-                                        <SafetyCertificateOutlined style={{ color: theme.gold, fontSize: '24px' }} />
-                                        <div>
-                                            <Text strong>Cam kết chất lượng</Text><br/>
-                                            <Text type="secondary" style={{ fontSize: '12px' }}>Sản phẩm được bảo hành vĩnh viễn.</Text>
-                                        </div>
-                                    </Space>
-                                </Col>
-                                <Col xs={24} md={12}>
-                                    <Space align="start">
-                                        <ShoppingCartOutlined style={{ color: theme.gold, fontSize: '24px' }} />
-                                        <div>
-                                            <Text strong>Vận chuyển ưu tiên</Text><br/>
-                                            <Text type="secondary" style={{ fontSize: '12px' }}>Miễn phí vận chuyển bảo đảm.</Text>
-                                        </div>
-                                    </Space>
-                                </Col>
-                            </Row>
-                        </Card>
-                    </Col>
-
-                    <Col xs={24} lg={8}>
-                        <div style={{ position: 'sticky', top: '100px' }}>
-                            <CartSummary 
-                                totalAmount={cart.totalAmount} 
-                                disableCheckout={hasError} 
-                            />
-                        </div>
-                    </Col>
-                </Row>
-            </div>
+            <Row gutter={[40, 40]}>
+                <Col xs={24} lg={16}>
+                    {cart.items.map(item => (
+                        <CartItem key={item.id} item={item} />
+                    ))}
+                </Col>
+                <Col xs={24} lg={8}>
+                    <div style={{ position: 'sticky', top: '100px' }}>
+                        <CartSummary totalAmount={cart.totalAmount} disableCheckout={hasError} />
+                    </div>
+                </Col>
+            </Row>
         </div>
     );
 };

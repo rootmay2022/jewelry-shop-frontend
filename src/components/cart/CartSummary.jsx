@@ -13,17 +13,10 @@ const CartSummary = ({ totalAmount, disableCheckout }) => {
             <Title level={4}>Tóm Tắt Đơn Hàng</Title>
             <Divider />
             <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 16 }}>
-                <Text>Tạm tính</Text>
-                <Text>{formatCurrency(totalAmount)}</Text>
-            </div>
-            <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                <Text strong>Tổng cộng</Text>
-                <Text strong style={{ color: '#C5A059', fontSize: '18px' }}>
-                    {formatCurrency(totalAmount)}
-                </Text>
+                <Text>Tổng cộng</Text>
+                <Text strong style={{ color: '#C5A059', fontSize: '18px' }}>{formatCurrency(totalAmount)}</Text>
             </div>
             <Divider />
-            
             <Button 
                 type="primary" 
                 size="large" 
@@ -31,17 +24,17 @@ const CartSummary = ({ totalAmount, disableCheckout }) => {
                 disabled={disableCheckout}
                 onClick={() => navigate('/checkout')}
                 style={{ 
-                    height: '50px',
+                    height: '50px', 
                     backgroundColor: disableCheckout ? '#d9d9d9' : '#001529',
-                    borderColor: disableCheckout ? '#d9d9d9' : '#001529'
+                    borderColor: disableCheckout ? '#d9d9d9' : '#001529',
+                    borderRadius: 0
                 }}
             >
-                {disableCheckout ? 'GIỎ HÀNG LỖI' : 'Tiến hành thanh toán'}
+                {disableCheckout ? 'GIỎ HÀNG QUÁ TỒN KHO' : 'TIẾN HÀNH THANH TOÁN'}
             </Button>
-            
             {disableCheckout && (
                 <Text type="danger" style={{ fontSize: '12px', display: 'block', textAlign: 'center', marginTop: 10 }}>
-                    Vui lòng giảm số lượng sản phẩm quá tồn kho
+                    Vui lòng điều chỉnh số lượng để tiếp tục
                 </Text>
             )}
         </Card>
