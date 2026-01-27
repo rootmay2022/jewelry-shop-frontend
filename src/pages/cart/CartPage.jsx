@@ -51,7 +51,6 @@ const CartPage = () => {
 
     return (
         <div style={{ backgroundColor: theme.bg, minHeight: '100vh', paddingBottom: '80px' }}>
-            {/* Header / Breadcrumb */}
             <div style={{ padding: '40px 10% 20px' }}>
                 <Breadcrumb 
                     items={[
@@ -72,17 +71,27 @@ const CartPage = () => {
                 {/* Cảnh báo nếu có lỗi tồn kho */}
                 {hasError && (
                     <Alert
-                        message="Lưu ý về số lượng"
-                        description={`Có ${invalidItems.length} sản phẩm vượt quá số lượng trong kho. Vui lòng điều chỉnh lại để thanh toán.`}
+                        message="Lỗi số lượng sản phẩm"
+                        description={
+                            <div>
+                                <Text>Một số sản phẩm vượt quá tồn kho thực tế. Vui lòng giảm số lượng để thanh toán.</Text>
+                                <ul style={{ marginTop: 8 }}>
+                                    {invalidItems.map(item => (
+                                        <li key={item.id}>
+                                            <Text strong>{item.product?.name}</Text> (Chỉ còn {item.product?.stockQuantity} món)
+                                        </li>
+                                    ))}
+                                </ul>
+                            </div>
+                        }
                         type="error"
                         showIcon
                         icon={<WarningOutlined />}
-                        style={{ marginBottom: 24, borderRadius: 0 }}
+                        style={{ marginBottom: 24, borderRadius: 0, borderLeft: '5px solid #ff4d4f' }}
                     />
                 )}
             </div>
 
-            {/* Main Content */}
             <div style={{ padding: '0 10%' }}>
                 <Row gutter={[40, 40]}>
                     <Col xs={24} lg={16}>
@@ -95,7 +104,6 @@ const CartPage = () => {
                             ))}
                         </div>
 
-                        {/* Cam kết bảo mật/chất lượng */}
                         <Card style={{ background: '#fff', border: '1px dashed #d9d9d9', borderRadius: 0 }}>
                             <Row gutter={[24, 24]}>
                                 <Col xs={24} md={12}>
@@ -120,10 +128,9 @@ const CartPage = () => {
                         </Card>
                     </Col>
 
-                    {/* Summary Section */}
                     <Col xs={24} lg={8}>
                         <div style={{ position: 'sticky', top: '100px' }}>
-                            {/* Truyền thêm prop disableCheckout nếu có lỗi tồn kho */}
+                            {/* QUAN TRỌNG: Truyền disableCheckout để nút thanh toán tự khóa */}
                             <CartSummary 
                                 totalAmount={cart.totalAmount} 
                                 disableCheckout={hasError} 
