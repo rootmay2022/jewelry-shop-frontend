@@ -1,6 +1,6 @@
 import React from 'react';
 import { useCart } from '../../context/CartContext';
-import { Row, Col, Card, Typography, Button, Spin, Breadcrumb, Divider, Space, Alert } from 'antd';
+import { Row, Col, Typography, Button, Spin, Breadcrumb, Divider, Alert } from 'antd';
 import { Link } from 'react-router-dom';
 import { ShoppingCartOutlined, ArrowLeftOutlined, WarningOutlined } from '@ant-design/icons';
 import CartItem from '../../components/cart/CartItem';
@@ -13,12 +13,10 @@ const CartPage = () => {
 
     const theme = { navy: '#001529', gold: '#C5A059', bg: '#fbfbfb' };
 
-    // Logic kiểm tra lỗi kho (Fix lỗi hiển thị 0 đơn)
+    // FIX: Backend trả về stockQuantity nằm trực tiếp trong item
     const invalidItems = cart?.items?.filter(item => {
-        // Cố gắng tìm số tồn kho từ mọi ngóc ngách của dữ liệu
-        const stock = item.product?.stockQuantity ?? item.product?.quantity ?? item.stockQuantity;
+        const stock = item.stockQuantity; // Đã khớp với CartItemResponse.java
         
-        // Nếu tìm thấy số (kể cả số 0) thì mới so sánh
         if (typeof stock === 'number') {
             return item.quantity > stock;
         }
@@ -58,19 +56,17 @@ const CartPage = () => {
             
             <Divider />
 
+            {/* Thông báo lỗi nếu vượt quá stockQuantity từ Backend */}
             {hasError && (
                 <Alert
                     message="Lỗi số lượng sản phẩm"
                     description={
                         <ul>
-                            {invalidItems.map(item => {
-                                const avail = item.product?.stockQuantity ?? item.product?.quantity ?? item.stockQuantity ?? 0;
-                                return (
-                                    <li key={item.id}>
-                                        <Text strong>{item.productName}</Text>: Chỉ còn <Text strong type="danger">{avail}</Text> món trong kho.
-                                    </li>
-                                );
-                            })}
+                            {invalidItems.map(item => (
+                                <li key={item.id}>
+                                    <Text strong>{item.productName}</Text>: Chỉ còn <Text strong type="danger">{item.stockQuantity}</Text> món trong kho.
+                                </li>
+                            ))}
                         </ul>
                     }
                     type="error"
@@ -88,6 +84,7 @@ const CartPage = () => {
                 </Col>
                 <Col xs={24} lg={8}>
                     <div style={{ position: 'sticky', top: '100px' }}>
+                        {/* disableCheckout sẽ khóa nút nếu số lượng > stockQuantity */}
                         <CartSummary totalAmount={cart.totalAmount} disableCheckout={hasError} />
                     </div>
                 </Col>
