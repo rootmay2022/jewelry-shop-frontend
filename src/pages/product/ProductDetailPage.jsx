@@ -3,7 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { 
     Row, Col, Image, Typography, InputNumber, Button, Spin, message, Divider, Tag, Space, Breadcrumb 
 } from 'antd'; 
-import { ShoppingCartOutlined, HomeOutlined, SafetyCertificateOutlined, CarOutlined, arrowLeftOutlined } from '@ant-design/icons';
+import { ShoppingCartOutlined, HomeOutlined, SafetyCertificateOutlined, CarOutlined } from '@ant-design/icons';
 import { getProductById } from '../../api/productApi';
 import { useCart } from '../../context/CartContext';
 import { useAuth } from '../../context/AuthContext';
@@ -14,7 +14,8 @@ const { Title, Paragraph, Text } = Typography;
 const ProductDetailPage = () => {
     const { id } = useParams();
     const navigate = useNavigate();
-    const { addToCart, loading: cartLoading } = useCart();
+    // Lấy giỏ hàng từ context để tính toán số lượng còn lại có thể mua
+    const { cart, addToCart, loading: cartLoading } = useCart();
     const { isAuthenticated } = useAuth();
     const [product, setProduct] = useState(null);
     const [loading, setLoading] = useState(true);
@@ -31,7 +32,6 @@ const ProductDetailPage = () => {
             setLoading(true);
             try {
                 const response = await getProductById(id);
-                // Đảm bảo logic kiểm tra response khớp với API của ní
                 if (response && (response.success || response.data)) {
                     setProduct(response.data || response);
                 } else {
@@ -47,17 +47,23 @@ const ProductDetailPage = () => {
         fetchProduct();
     }, [id]);
 
+    // Lấy số lượng sản phẩm này hiện đã có trong giỏ hàng
+    const currentItemInCart = cart?.items?.find(item => 
+        (item.productId === product?.id || item.product?.id === product?.id)
+    );
+    const qtyInCart = currentItemInCart ? currentItemInCart.quantity : 0;
+    const availableToBuy = product ? product.stockQuantity - qtyInCart : 0;
+
     const handleAddToCart = () => {
         if (!isAuthenticated) {
             message.warning('Vui lòng đăng nhập để thực hiện giao dịch.');
-            navigate('/login', { state: { from: window.location.pathname } }); // Lưu lại trang cũ để login xong quay lại
+            navigate('/login', { state: { from: window.location.pathname } });
             return;
         }
         
         if (product?.id) {
-            addToCart(product.id, quantity);
-            // Thông báo thành công thường được xử lý trong context, 
-            // nếu không ní có thể thêm message.success ở đây.
+            // SỬA ĐỔI QUAN TRỌNG: Truyền nguyên object product vào
+            addToCart(product, quantity);
         }
     };
 
@@ -77,7 +83,6 @@ const ProductDetailPage = () => {
 
     return (
         <div style={{ background: '#fff', minHeight: '100vh', paddingBottom: '80px' }}>
-            {/* Breadcrumb Section */}
             <div style={{ padding: '20px 5%', background: '#fafafa', borderBottom: '1px solid #eee', marginBottom: '40px' }}>
                 <Breadcrumb 
                     items={[
@@ -90,7 +95,6 @@ const ProductDetailPage = () => {
 
             <div style={{ maxWidth: '1200px', margin: '0 auto', padding: '0 20px' }}>
                 <Row gutter={[60, 40]}>
-                    {/* KHỐI ẢNH - Hiệu ứng Zoom nhẹ */}
                     <Col xs={24} md={12}>
                         <div style={{ 
                             padding: '20px', 
@@ -112,7 +116,6 @@ const ProductDetailPage = () => {
                         </div>
                     </Col>
 
-                    {/* KHỐI NỘI DUNG */}
                     <Col xs={24} md={12}>
                         <Space direction="vertical" size={24} style={{ width: '100%' }}>
                             <div>
@@ -121,13 +124,7 @@ const ProductDetailPage = () => {
                                         {product.category?.name?.toUpperCase()}
                                     </Tag>
                                 )}
-                                <Title level={1} style={{ 
-                                    fontFamily: '"Playfair Display", serif', 
-                                    fontSize: '36px',
-                                    margin: 0, 
-                                    color: theme.navy,
-                                    fontWeight: 500 
-                                }}>
+                                <Title level={1} style={{ fontFamily: '"Playfair Display", serif', fontSize: '36px', margin: 0, color: theme.navy, fontWeight: 500 }}>
                                     {product.name}
                                 </Title>
                                 <Text type="secondary">Mã sản phẩm: #{product.id?.toString().slice(-6) || 'N/A'}</Text>
@@ -138,12 +135,11 @@ const ProductDetailPage = () => {
                             </Title>
 
                             <Paragraph style={{ color: '#555', fontSize: '16px', lineHeight: '1.8', textAlign: 'justify' }}>
-                                {product.description || "Một tác phẩm nghệ thuật tinh xảo nằm trong bộ sưu tập mới nhất, mang đậm nét sang trọng và đẳng cấp cho người sở hữu."}
+                                {product.description || "Một tác phẩm nghệ thuật tinh xảo nằm trong bộ sưu tập mới nhất."}
                             </Paragraph>
 
                             <Divider style={{ margin: '12px 0' }} />
 
-                            {/* Thông số kỹ thuật */}
                             <Row gutter={[16, 16]}>
                                 <Col span={12}>
                                     <Text type="secondary" style={{ fontSize: '12px', textTransform: 'uppercase' }}>Chất liệu chủ đạo</Text>
@@ -152,24 +148,20 @@ const ProductDetailPage = () => {
                                 <Col span={12}>
                                     <Text type="secondary" style={{ fontSize: '12px', textTransform: 'uppercase' }}>Trạng thái</Text>
                                     <div style={{ marginTop: '4px' }}>
-                                        {product.stockQuantity > 0 ? 
-                                            <Tag color="success" icon={<SafetyCertificateOutlined />}>Sẵn có tại Boutique</Tag> : 
-                                            <Tag color="default">Đặt hàng trước</Tag>
-                                        }
+                                        {product.stockQuantity > 0 ? (
+                                            <Tag color="success" icon={<SafetyCertificateOutlined />}>Sẵn có: {product.stockQuantity} món</Tag>
+                                        ) : (
+                                            <Tag color="error">Hết hàng</Tag>
+                                        )}
                                     </div>
                                 </Col>
                             </Row>
 
-                            {/* Trust Badges */}
                             <div style={{ background: theme.gray, padding: '20px', borderRadius: '8px' }}>
-                                <Row gutter={[16, 16]}>
-                                    <Col span={24}>
-                                        <Space><SafetyCertificateOutlined style={{ color: theme.gold }} /> <Text size="small">Cam kết kim cương & đá quý thiên nhiên 100%</Text></Space>
-                                    </Col>
-                                    <Col span={24}>
-                                        <Space><CarOutlined style={{ color: theme.gold }} /> <Text size="small">Giao hàng bảo mật & miễn phí toàn quốc</Text></Space>
-                                    </Col>
-                                </Row>
+                                <Space direction="vertical">
+                                    <Space><SafetyCertificateOutlined style={{ color: theme.gold }} /> <Text size="small">Cam kết kim cương & đá quý thiên nhiên 100%</Text></Space>
+                                    <Space><CarOutlined style={{ color: theme.gold }} /> <Text size="small">Giao hàng bảo mật & miễn phí toàn quốc</Text></Space>
+                                </Space>
                             </div>
 
                             {/* Actions */}
@@ -178,35 +170,43 @@ const ProductDetailPage = () => {
                                     <Text type="secondary" style={{ fontSize: '11px', marginBottom: '4px' }}>SỐ LƯỢNG</Text>
                                     <InputNumber 
                                         min={1} 
-                                        max={product.stockQuantity || 1} 
+                                        // CHẶN: Không cho nhập quá số lượng còn lại có thể mua
+                                        max={availableToBuy} 
                                         value={quantity} 
                                         onChange={setQuantity} 
-                                        disabled={product.stockQuantity <= 0}
+                                        disabled={availableToBuy <= 0}
                                         style={{ width: '80px', height: '45px', display: 'flex', alignItems: 'center' }}
                                     />
                                 </div>
-                                <Button
-                                    type="primary"
-                                    icon={<ShoppingCartOutlined />}
-                                    size="large"
-                                    loading={cartLoading}
-                                    onClick={handleAddToCart}
-                                    disabled={product.stockQuantity <= 0}
-                                    style={{ 
-                                        height: '60px', 
-                                        flex: 1,
-                                        marginTop: 'auto',
-                                        backgroundColor: theme.navy,
-                                        borderColor: theme.navy,
-                                        borderRadius: '0',
-                                        fontSize: '16px',
-                                        letterSpacing: '2px',
-                                        textTransform: 'uppercase'
-                                    }}
-                                    className="luxury-button"
-                                >
-                                    {product.stockQuantity > 0 ? 'Thêm vào giỏ hàng' : 'Hết hàng'}
-                                </Button>
+                                <div style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
+                                    <Button
+                                        type="primary"
+                                        icon={<ShoppingCartOutlined />}
+                                        size="large"
+                                        loading={cartLoading}
+                                        onClick={handleAddToCart}
+                                        // Vô hiệu hóa nếu hết hàng hoặc đã mua hết số lượng trong kho
+                                        disabled={availableToBuy <= 0}
+                                        style={{ 
+                                            height: '45px', 
+                                            marginTop: 'auto',
+                                            backgroundColor: theme.navy,
+                                            borderColor: theme.navy,
+                                            borderRadius: '0',
+                                            textTransform: 'uppercase',
+                                            letterSpacing: '1px'
+                                        }}
+                                        className="luxury-button"
+                                    >
+                                        {product.stockQuantity <= 0 ? 'Hết hàng' : 
+                                         availableToBuy <= 0 ? 'Đã đạt giới hạn kho' : 'Thêm vào giỏ hàng'}
+                                    </Button>
+                                    {qtyInCart > 0 && availableToBuy > 0 && (
+                                        <Text type="secondary" style={{ fontSize: '10px', marginTop: '4px' }}>
+                                            (Bạn đã có {qtyInCart} món trong giỏ)
+                                        </Text>
+                                    )}
+                                </div>
                             </div>
                         </Space>
                     </Col>
@@ -214,13 +214,11 @@ const ProductDetailPage = () => {
             </div>
             
             <style>{`
-                .luxury-button:hover {
+                .luxury-button:hover:not(:disabled) {
                     background-color: ${theme.gold} !important;
                     border-color: ${theme.gold} !important;
-                    transition: all 0.4s ease;
                 }
                 .ant-input-number-handler-wrap { opacity: 1; }
-                h1 { letter-spacing: -0.5px; }
             `}</style>
         </div>
     );

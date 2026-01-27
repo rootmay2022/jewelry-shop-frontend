@@ -13,7 +13,7 @@ export const CartProvider = ({ children }) => {
 
   const fetchCart = useCallback(async () => {
     if (!isAuthenticated) {
-      setCart(null); // Xóa giỏ hàng nếu không đăng nhập
+      setCart(null);
       return;
     }
     setLoading(true);
@@ -24,7 +24,6 @@ export const CartProvider = ({ children }) => {
       }
     } catch (error) {
       console.error('Failed to fetch cart:', error);
-      // Không hiển thị lỗi cho người dùng vì đây là hành động nền
     } finally {
       setLoading(false);
     }
@@ -34,10 +33,21 @@ export const CartProvider = ({ children }) => {
     fetchCart();
   }, [fetchCart]);
 
-  const addToCart = async (productId, quantity) => {
+  // CHỈNH SỬA 1: Chặn khi thêm mới vào giỏ
+  const addToCart = async (product, quantity) => {
+    // Kiểm tra tồn kho ngay lập tức
+    const stock = product.stockQuantity;
+    const existingItem = cart?.items?.find(item => (item.productId === product.id || item.product?.id === product.id));
+    const currentQtyInCart = existingItem ? existingItem.quantity : 0;
+
+    if (currentQtyInCart + quantity > stock) {
+      message.warning(`Không thể thêm! Bạn đã có ${currentQtyInCart} trong giỏ, kho chỉ còn ${stock}`);
+      return;
+    }
+
     setLoading(true);
     try {
-      const response = await addItemToCart({ productId, quantity });
+      const response = await addItemToCart({ productId: product.id, quantity });
       if (response.success) {
         setCart(response.data);
         message.success(response.message || 'Thêm vào giỏ hàng thành công!');
@@ -52,7 +62,16 @@ export const CartProvider = ({ children }) => {
     }
   };
 
+  // CHỈNH SỬA 2: Chặn khi cập nhật số lượng tại Cart Page
   const updateItemQuantity = async (itemId, quantity) => {
+    const item = cart?.items?.find(i => i.id === itemId);
+    const stock = item?.product?.stockQuantity;
+
+    if (stock !== undefined && quantity > stock) {
+      message.warning(`Trong kho chỉ còn ${stock} sản phẩm.`);
+      return;
+    }
+
     setLoading(true);
     try {
       const response = await updateCartItem(itemId, quantity);
@@ -72,7 +91,6 @@ export const CartProvider = ({ children }) => {
     try {
       const response = await removeItemFromCart(itemId);
       if (response.success) {
-        // Cần fetch lại giỏ hàng để cập nhật totalAmount
         await fetchCart(); 
         message.success(response.message || 'Xóa sản phẩm thành công.');
       }

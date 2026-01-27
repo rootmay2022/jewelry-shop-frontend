@@ -1,9 +1,8 @@
 import React from 'react';
 import { useCart } from '../../context/CartContext';
-// Thêm Space vào đây nè ní
-import { Row, Col, Card, Typography, Button, Empty, Spin, Breadcrumb, Divider, Space } from 'antd';
+import { Row, Col, Card, Typography, Button, Spin, Breadcrumb, Divider, Space, Alert } from 'antd';
 import { Link } from 'react-router-dom';
-import { ShoppingCartOutlined, ArrowLeftOutlined, SafetyCertificateOutlined } from '@ant-design/icons';
+import { ShoppingCartOutlined, ArrowLeftOutlined, SafetyCertificateOutlined, WarningOutlined } from '@ant-design/icons';
 import CartItem from '../../components/cart/CartItem';
 import CartSummary from '../../components/cart/CartSummary';
 
@@ -14,9 +13,13 @@ const CartPage = () => {
 
     const theme = {
         navy: '#001529',
-        gold: '#C5A059', // Dùng màu gold đồng bộ với trang Home
+        gold: '#C5A059',
         bg: '#fbfbfb'
     };
+
+    // Kiểm tra xem có sản phẩm nào vượt quá tồn kho không
+    const invalidItems = cart?.items?.filter(item => item.quantity > (item.product?.stockQuantity || 0)) || [];
+    const hasError = invalidItems.length > 0;
 
     if (loading && !cart) {
         return (
@@ -38,13 +41,7 @@ const CartPage = () => {
                 <Button 
                     type="primary" 
                     size="large"
-                    style={{ 
-                        backgroundColor: theme.navy, 
-                        borderColor: theme.navy, 
-                        borderRadius: 0, 
-                        height: '50px', 
-                        padding: '0 40px' 
-                    }}
+                    style={{ backgroundColor: theme.navy, borderColor: theme.navy, borderRadius: 0, height: '50px', padding: '0 40px' }}
                 >
                     <Link to="/products">TIẾP TỤC MUA SẮM</Link>
                 </Button>
@@ -63,12 +60,7 @@ const CartPage = () => {
                     ]} 
                 />
                 <div style={{ marginTop: '20px', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end' }}>
-                    <Title level={1} style={{ 
-                        margin: 0, 
-                        fontFamily: '"Playfair Display", serif', 
-                        fontSize: '36px',
-                        color: theme.navy 
-                    }}>
+                    <Title level={1} style={{ margin: 0, fontFamily: '"Playfair Display", serif', fontSize: '36px', color: theme.navy }}>
                         Túi Mua Sắm ({cart.items.length})
                     </Title>
                     <Link to="/products" style={{ color: theme.gold, fontWeight: '600' }}>
@@ -76,6 +68,18 @@ const CartPage = () => {
                     </Link>
                 </div>
                 <Divider style={{ margin: '20px 0 40px' }} />
+
+                {/* Cảnh báo nếu có lỗi tồn kho */}
+                {hasError && (
+                    <Alert
+                        message="Lưu ý về số lượng"
+                        description={`Có ${invalidItems.length} sản phẩm vượt quá số lượng trong kho. Vui lòng điều chỉnh lại để thanh toán.`}
+                        type="error"
+                        showIcon
+                        icon={<WarningOutlined />}
+                        style={{ marginBottom: 24, borderRadius: 0 }}
+                    />
+                )}
             </div>
 
             {/* Main Content */}
@@ -91,7 +95,7 @@ const CartPage = () => {
                             ))}
                         </div>
 
-                        {/* Thông tin thêm - Space đã được định nghĩa */}
+                        {/* Cam kết bảo mật/chất lượng */}
                         <Card style={{ background: '#fff', border: '1px dashed #d9d9d9', borderRadius: 0 }}>
                             <Row gutter={[24, 24]}>
                                 <Col xs={24} md={12}>
@@ -119,7 +123,11 @@ const CartPage = () => {
                     {/* Summary Section */}
                     <Col xs={24} lg={8}>
                         <div style={{ position: 'sticky', top: '100px' }}>
-                            <CartSummary totalAmount={cart.totalAmount} />
+                            {/* Truyền thêm prop disableCheckout nếu có lỗi tồn kho */}
+                            <CartSummary 
+                                totalAmount={cart.totalAmount} 
+                                disableCheckout={hasError} 
+                            />
                         </div>
                     </Col>
                 </Row>
