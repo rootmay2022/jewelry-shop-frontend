@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
-import { Row, Col, Spin, Input, Pagination, Typography, Checkbox, Slider, Space, Divider, Button, Drawer, message, Tag } from 'antd';
-import { SearchOutlined, ShoppingCartOutlined, ThunderboltOutlined } from '@ant-design/icons';
+import { Row, Col, Spin, Input, Pagination, Typography, Checkbox, Slider, Space, Divider, Button, Drawer, message } from 'antd';
+import { SearchOutlined, ShoppingCartOutlined, ThunderboltOutlined, CheckCircleOutlined } from '@ant-design/icons';
 import { useNavigate } from 'react-router-dom';
 import { getAllProducts, searchProducts } from '../../api/productApi';
 import { getAllCategories } from '../../api/categoryApi';
@@ -14,7 +14,8 @@ const PRODUCTS_PER_PAGE = 12;
 
 const ProductsPage = () => {
     const navigate = useNavigate();
-    const { addToCart } = useCart(); // Hàm này trong context chịu trách nhiệm gọi API
+    // Lấy thêm biến 'cart' để biết trong giỏ đang có gì
+    const { addToCart, cart } = useCart(); 
     const { isAuthenticated } = useAuth();
 
     const [allProducts, setAllProducts] = useState([]);
@@ -24,7 +25,6 @@ const ProductsPage = () => {
     const [currentPage, setCurrentPage] = useState(1);
     const [isDrawerVisible, setIsDrawerVisible] = useState(false);
     
-    // State để tạo hiệu ứng loading riêng cho từng nút khi bấm (tránh spam click)
     const [addingToCartId, setAddingToCartId] = useState(null);
 
     const [filters, setFilters] = useState({ 
@@ -38,7 +38,6 @@ const ProductsPage = () => {
         gold: '#D4AF37',
     };
 
-    // --- 1. LẤY DANH MỤC ---
     const fetchCategories = async () => {
         try {
             const response = await getAllCategories();
@@ -49,7 +48,6 @@ const ProductsPage = () => {
         }
     };
 
-    // --- 2. LẤY SẢN PHẨM ---
     const fetchProducts = useCallback(async (keyword = '') => {
         setLoading(true);
         try {
@@ -69,52 +67,53 @@ const ProductsPage = () => {
         fetchCategories();
     }, [fetchProducts]);
 
-    // --- 3. XỬ LÝ MUA NGAY (Mua 1 cái -> Vào giỏ xem) ---
+    // --- HÀM KIỂM TRA SỐ LƯỢNG TRONG GIỎ ---
+    const getQtyInCart = (productId) => {
+        if (!cart || !cart.items) return 0;
+        const item = cart.items.find(i => i.productId === productId || i.product?.id === productId);
+        return item ? item.quantity : 0;
+    };
+
+    // --- 3. XỬ LÝ MUA NGAY ---
     const handleBuyNow = async (product) => {
-        if (!isAuthenticated) {
-            message.warning('Vui lòng đăng nhập để mua hàng');
-            return navigate('/login');
-        }
+        if (!isAuthenticated) return navigate('/login');
         
-        if (product.stockQuantity <= 0) {
-            message.error('Sản phẩm này đã hết hàng!');
-            return;
+        // Check số lượng trong giỏ
+        const currentQty = getQtyInCart(product.id);
+        if (currentQty >= product.stockQuantity) {
+            message.warning('Bạn đã có hết số lượng tồn kho trong giỏ hàng!');
+            return navigate('/cart');
         }
 
         try {
-            // Số lượng cố định là 1
             await addToCart(product, 1); 
             navigate('/cart'); 
         } catch (error) {
-            // Lỗi sẽ được hiển thị bởi CartContext hoặc GlobalHandler
+            // Context đã handle lỗi
         }
     };
 
-    // --- 4. XỬ LÝ THÊM VÀO GIỎ (Chỉ thêm 1 cái) ---
+    // --- 4. XỬ LÝ THÊM VÀO GIỎ ---
     const handleAddToCart = async (product) => {
         if (!isAuthenticated) return navigate('/login');
 
-        if (product.stockQuantity <= 0) {
-            message.error('Sản phẩm này đã hết hàng!');
+        // Check số lượng trong giỏ
+        const currentQty = getQtyInCart(product.id);
+        if (currentQty >= product.stockQuantity) {
+            message.warning('Bạn đã thêm hết số lượng có trong kho vào giỏ rồi!');
             return;
         }
 
-        // Bật loading cho nút của sản phẩm này
         setAddingToCartId(product.id);
-        
         try {
-            // Số lượng cố định là 1
             await addToCart(product, 1);
-            // message.success đã có trong context, không cần gọi lại ở đây để tránh trùng
         } catch (error) {
-            console.error("Lỗi thêm giỏ hàng:", error);
+            console.error(error);
         } finally {
-            // Tắt loading
             setAddingToCartId(null);
         }
     };
 
-    // Logic lọc
     useEffect(() => {
         let result = [...allProducts];
         if (filters.categories.length > 0) {
@@ -143,11 +142,7 @@ const ProductsPage = () => {
             </div>
             <div>
                 <Text strong style={{ display: 'block', marginBottom: '12px', fontSize: '12px', color: '#888' }}>DANH MỤC</Text>
-                <Checkbox.Group 
-                    style={{ width: '100%' }} 
-                    value={filters.categories} 
-                    onChange={(vals) => setFilters(prev => ({...prev, categories: vals}))}
-                >
+                <Checkbox.Group style={{ width: '100%' }} value={filters.categories} onChange={(vals) => setFilters(prev => ({...prev, categories: vals}))}>
                     <Space direction="vertical" style={{ width: '100%' }}>
                         {categories.map(cat => (
                             <Checkbox key={cat.id} value={Number(cat.id)}>{cat.name}</Checkbox>
@@ -158,22 +153,14 @@ const ProductsPage = () => {
             <Divider style={{ margin: '0' }} />
             <div>
                 <Text strong style={{ display: 'block', marginBottom: '12px', fontSize: '12px', color: '#888' }}>KHOẢNG GIÁ</Text>
-                <Slider 
-                    range step={500000} min={0} max={2000000000} 
-                    value={filters.priceRange} 
-                    onChange={(val) => setFilters(prev => ({...prev, priceRange: val}))}
-                    trackStyle={[{ backgroundColor: theme.gold }]}
-                />
-                <Text type="secondary" style={{ fontSize: '12px' }}>
-                    {formatCurrency(filters.priceRange[0])} - {formatCurrency(filters.priceRange[1])}
-                </Text>
+                <Slider range step={500000} min={0} max={2000000000} value={filters.priceRange} onChange={(val) => setFilters(prev => ({...prev, priceRange: val}))} trackStyle={[{ backgroundColor: theme.gold }]} />
+                <Text type="secondary" style={{ fontSize: '12px' }}>{formatCurrency(filters.priceRange[0])} - {formatCurrency(filters.priceRange[1])}</Text>
             </div>
         </Space>
     );
 
     return (
         <div style={{ minHeight: '100vh', backgroundColor: '#fff', paddingBottom: '50px' }}>
-            {/* Banner */}
             <div style={{ backgroundColor: theme.navy, padding: '60px 20px', textAlign: 'center', marginBottom: '40px' }}>
                 <Title level={1} style={{ color: theme.gold, fontFamily: 'serif', margin: 0 }}>THE COLLECTION</Title>
                 <Text style={{ color: '#fff', opacity: 0.7, letterSpacing: '2px' }}>LUXURY EXPERIENCE</Text>
@@ -188,40 +175,25 @@ const ProductsPage = () => {
                     </Col>
 
                     <Col xs={24} md={17} lg={18} xl={19}>
-                        <Input 
-                            size="large" placeholder="Tìm tên sản phẩm..." 
-                            prefix={<SearchOutlined />} 
-                            style={{ marginBottom: '40px', borderRadius: 0 }}
-                            onPressEnter={(e) => fetchProducts(e.target.value)}
-                        />
+                        <Input size="large" placeholder="Tìm tên sản phẩm..." prefix={<SearchOutlined />} style={{ marginBottom: '40px', borderRadius: 0 }} onPressEnter={(e) => fetchProducts(e.target.value)} />
 
                         {loading ? <Spin size="large" style={{ display: 'block', margin: '100px auto' }} /> : (
                             <>
                                 <Row gutter={[24, 40]}>
                                     {paginatedProducts.map(product => {
-                                        // Kiểm tra hết hàng
                                         const isOutOfStock = product.stockQuantity <= 0;
-                                        // Kiểm tra đang thêm vào giỏ (để hiện loading)
                                         const isAdding = addingToCartId === product.id;
+                                        
+                                        // --- LOGIC MỚI: KIỂM TRA ĐÃ CÓ TRONG GIỎ CHƯA ---
+                                        const qtyInCart = getQtyInCart(product.id);
+                                        const isMaxedOut = qtyInCart >= product.stockQuantity; // Đã mua hết số lượng có thể
 
                                         return (
                                             <Col xs={12} sm={12} md={12} lg={8} xl={6} key={product.id}>
-                                                <div className="product-item-card" style={{ 
-                                                    border: '1px solid #f0f0f0', 
-                                                    height: '100%', 
-                                                    display: 'flex', 
-                                                    flexDirection: 'column',
-                                                    paddingBottom: '15px',
-                                                    position: 'relative'
-                                                }}>
+                                                <div className="product-item-card" style={{ border: '1px solid #f0f0f0', height: '100%', display: 'flex', flexDirection: 'column', paddingBottom: '15px', position: 'relative' }}>
                                                     
                                                     {isOutOfStock && (
-                                                        <div style={{
-                                                            position: 'absolute', top: 10, right: 10, zIndex: 2,
-                                                            background: '#ff4d4f', color: 'white', padding: '2px 8px', fontSize: '12px', fontWeight: 'bold'
-                                                        }}>
-                                                            HẾT HÀNG
-                                                        </div>
+                                                        <div style={{ position: 'absolute', top: 10, right: 10, zIndex: 2, background: '#ff4d4f', color: 'white', padding: '2px 8px', fontSize: '12px', fontWeight: 'bold' }}>HẾT HÀNG</div>
                                                     )}
 
                                                     <ProductCard product={product} />
@@ -231,55 +203,50 @@ const ProductsPage = () => {
                                                             block type="primary" 
                                                             icon={!isOutOfStock && <ThunderboltOutlined />} 
                                                             onClick={() => handleBuyNow(product)}
-                                                            disabled={isOutOfStock || isAdding}
+                                                            disabled={isOutOfStock || isAdding || isMaxedOut}
                                                             style={{ 
-                                                                background: isOutOfStock ? '#d9d9d9' : theme.navy, 
-                                                                borderColor: isOutOfStock ? '#d9d9d9' : theme.navy, 
-                                                                color: isOutOfStock ? 'rgba(0,0,0,0.25)' : '#fff',
-                                                                borderRadius: 0, 
-                                                                marginBottom: '8px',
-                                                                height: '40px',
-                                                                fontWeight: 'bold'
+                                                                background: (isOutOfStock || isMaxedOut) ? '#d9d9d9' : theme.navy, 
+                                                                borderColor: (isOutOfStock || isMaxedOut) ? '#d9d9d9' : theme.navy, 
+                                                                color: (isOutOfStock || isMaxedOut) ? 'rgba(0,0,0,0.45)' : '#fff',
+                                                                borderRadius: 0, marginBottom: '8px', height: '40px', fontWeight: 'bold'
                                                             }}
                                                         >
-                                                            {isOutOfStock ? 'HẾT HÀNG' : 'MUA NGAY'}
+                                                            {isOutOfStock ? 'HẾT HÀNG' : isMaxedOut ? 'ĐÃ CÓ TRONG GIỎ' : 'MUA NGAY'}
                                                         </Button>
 
                                                         <Button 
                                                             block 
-                                                            icon={!isOutOfStock && <ShoppingCartOutlined />} 
+                                                            icon={!isOutOfStock && !isMaxedOut && <ShoppingCartOutlined />} 
                                                             onClick={() => handleAddToCart(product)}
-                                                            disabled={isOutOfStock || isAdding}
-                                                            loading={isAdding} // Hiện icon xoay xoay khi đang thêm
+                                                            disabled={isOutOfStock || isAdding || isMaxedOut}
+                                                            loading={isAdding}
                                                             style={{ borderRadius: 0, height: '40px' }}
                                                         >
-                                                            {isOutOfStock ? 'Tạm hết' : (isAdding ? 'Đang thêm...' : 'Thêm vào giỏ')}
+                                                            {isOutOfStock ? 'Tạm hết' : isMaxedOut ? 'Đủ số lượng' : (isAdding ? 'Đang thêm...' : 'Thêm vào giỏ')}
                                                         </Button>
+                                                        
+                                                        {/* Hiển thị dòng nhắc nhở nhỏ nếu đã có trong giỏ */}
+                                                        {qtyInCart > 0 && !isOutOfStock && (
+                                                            <div style={{ textAlign: 'center', marginTop: 5 }}>
+                                                                <Text type="secondary" style={{ fontSize: '11px', color: theme.gold }}>
+                                                                    <CheckCircleOutlined /> Đã có {qtyInCart} sản phẩm
+                                                                </Text>
+                                                            </div>
+                                                        )}
                                                     </div>
                                                 </div>
                                             </Col>
                                         );
                                     })}
                                 </Row>
-                                <Pagination 
-                                    current={currentPage} total={filteredProducts.length} 
-                                    pageSize={PRODUCTS_PER_PAGE} onChange={setCurrentPage} 
-                                    style={{ marginTop: 60, textAlign: 'center' }} 
-                                />
+                                <Pagination current={currentPage} total={filteredProducts.length} pageSize={PRODUCTS_PER_PAGE} onChange={setCurrentPage} style={{ marginTop: 60, textAlign: 'center' }} />
                             </>
                         )}
                     </Col>
                 </Row>
             </div>
-            
-            <Drawer title="BỘ LỌC" placement="right" onClose={() => setIsDrawerVisible(false)} open={isDrawerVisible}>
-                <FilterContent />
-            </Drawer>
-
-            <style>{`
-                .product-item-card:hover { box-shadow: 0 10px 20px rgba(0,0,0,0.08); transform: translateY(-3px); transition: all 0.3s; }
-                .ant-btn-primary:hover:not(:disabled) { background: ${theme.gold} !important; border-color: ${theme.gold} !important; }
-            `}</style>
+            <Drawer title="BỘ LỌC" placement="right" onClose={() => setIsDrawerVisible(false)} open={isDrawerVisible}><FilterContent /></Drawer>
+            <style>{`.product-item-card:hover { box-shadow: 0 10px 20px rgba(0,0,0,0.08); transform: translateY(-3px); transition: all 0.3s; } .ant-btn-primary:hover:not(:disabled) { background: ${theme.gold} !important; border-color: ${theme.gold} !important; }`}</style>
         </div>
     );
 };
