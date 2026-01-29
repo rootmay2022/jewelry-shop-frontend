@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { 
     Row, Col, Image, Typography, InputNumber, Button, Spin, message, Divider, Tag, Space, Breadcrumb 
 } from 'antd'; 
@@ -14,9 +14,11 @@ const { Title, Paragraph, Text } = Typography;
 const ProductDetailPage = () => {
     const { id } = useParams();
     const navigate = useNavigate();
-    // Lấy giỏ hàng từ context để tính toán số lượng còn lại có thể mua
+    const location = useLocation();
+    
     const { cart, addToCart, loading: cartLoading } = useCart();
     const { isAuthenticated } = useAuth();
+    
     const [product, setProduct] = useState(null);
     const [loading, setLoading] = useState(true);
     const [quantity, setQuantity] = useState(1);
@@ -47,23 +49,50 @@ const ProductDetailPage = () => {
         fetchProduct();
     }, [id]);
 
-    // Lấy số lượng sản phẩm này hiện đã có trong giỏ hàng
+    // --- LOGIC TÍNH TOÁN SỐ LƯỢNG CÒN LẠI ---
     const currentItemInCart = cart?.items?.find(item => 
         (item.productId === product?.id || item.product?.id === product?.id)
     );
     const qtyInCart = currentItemInCart ? currentItemInCart.quantity : 0;
-    const availableToBuy = product ? product.stockQuantity - qtyInCart : 0;
+    
+    // Số lượng tối đa khách được phép mua thêm (Kho - Đã có trong giỏ)
+    const availableToBuy = product ? Math.max(0, product.stockQuantity - qtyInCart) : 0;
 
-    const handleAddToCart = () => {
+    // --- FIX 1: HÀM XỬ LÝ KHI NHẬP SỐ LƯỢNG ---
+    const handleQuantityChange = (value) => {
+        if (!value) return;
+        
+        // Nếu nhập quá số lượng cho phép -> Reset về max ngay lập tức
+        if (value > availableToBuy) {
+            message.warning(`Bạn chỉ có thể mua thêm tối đa ${availableToBuy} sản phẩm này.`);
+            setQuantity(availableToBuy);
+        } else {
+            setQuantity(value);
+        }
+    };
+
+    // --- FIX 2: HÀM XỬ LÝ KHI BẤM NÚT THÊM ---
+    const handleAddToCart = async () => {
         if (!isAuthenticated) {
             message.warning('Vui lòng đăng nhập để thực hiện giao dịch.');
-            navigate('/login', { state: { from: window.location.pathname } });
+            navigate('/login', { state: { from: location.pathname } }); // Lưu lại trang hiện tại để login xong quay lại
+            return;
+        }
+
+        if (availableToBuy <= 0) {
+            message.error("Sản phẩm đã hết hàng hoặc bạn đã thêm hết số lượng trong kho vào giỏ.");
             return;
         }
         
+        if (quantity > availableToBuy) {
+             message.error(`Kho không đủ hàng! Chỉ còn lại ${availableToBuy} sản phẩm.`);
+             return;
+        }
+
         if (product?.id) {
-            // SỬA ĐỔI QUAN TRỌNG: Truyền nguyên object product vào
-            addToCart(product, quantity);
+            await addToCart(product, quantity);
+            // Reset quantity về 1 sau khi thêm (nếu còn hàng)
+            setQuantity(1); 
         }
     };
 
@@ -170,10 +199,11 @@ const ProductDetailPage = () => {
                                     <Text type="secondary" style={{ fontSize: '11px', marginBottom: '4px' }}>SỐ LƯỢNG</Text>
                                     <InputNumber 
                                         min={1} 
-                                        // CHẶN: Không cho nhập quá số lượng còn lại có thể mua
+                                        // FIX 3: Ràng buộc Max tại đây
                                         max={availableToBuy} 
                                         value={quantity} 
-                                        onChange={setQuantity} 
+                                        // FIX 4: Gọi hàm xử lý thay vì setQuantity trực tiếp
+                                        onChange={handleQuantityChange} 
                                         disabled={availableToBuy <= 0}
                                         style={{ width: '80px', height: '45px', display: 'flex', alignItems: 'center' }}
                                     />
@@ -185,7 +215,7 @@ const ProductDetailPage = () => {
                                         size="large"
                                         loading={cartLoading}
                                         onClick={handleAddToCart}
-                                        // Vô hiệu hóa nếu hết hàng hoặc đã mua hết số lượng trong kho
+                                        // FIX 5: Disable nút nếu hết hàng mua được
                                         disabled={availableToBuy <= 0}
                                         style={{ 
                                             height: '45px', 
@@ -201,9 +231,9 @@ const ProductDetailPage = () => {
                                         {product.stockQuantity <= 0 ? 'Hết hàng' : 
                                          availableToBuy <= 0 ? 'Đã đạt giới hạn kho' : 'Thêm vào giỏ hàng'}
                                     </Button>
-                                    {qtyInCart > 0 && availableToBuy > 0 && (
-                                        <Text type="secondary" style={{ fontSize: '10px', marginTop: '4px' }}>
-                                            (Bạn đã có {qtyInCart} món trong giỏ)
+                                    {qtyInCart > 0 && (
+                                        <Text type="secondary" style={{ fontSize: '12px', marginTop: '8px', color: theme.gold }}>
+                                            (Bạn đã có {qtyInCart} sản phẩm trong giỏ. Còn lại {availableToBuy} có thể mua)
                                         </Text>
                                     )}
                                 </div>

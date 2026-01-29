@@ -66,7 +66,7 @@ const ProductsPage = () => {
         fetchCategories();
     }, [fetchProducts]);
 
-    // --- 3. XỬ LÝ MUA NGAY & THÊM GIỎ (ĐÃ FIX LỖI) ---
+    // --- 3. XỬ LÝ MUA NGAY & THÊM GIỎ (ĐÃ FIX) ---
     
     const handleBuyNow = async (product) => {
         if (!isAuthenticated) {
@@ -79,8 +79,8 @@ const ProductsPage = () => {
             // Truyền nguyên object 'product' để Context check kho
             await addToCart(product, 1); 
             
-            // Chuyển sang trang checkout (không cần state vì data đã nằm trong DB)
-            navigate('/checkout');
+            // FIX: Chuyển đến trang GIỎ HÀNG để khách xem lại và chọn số lượng
+            navigate('/cart'); 
         } catch (error) {
             console.error("Lỗi khi mua ngay:", error);
         }
@@ -94,7 +94,6 @@ const ProductsPage = () => {
         await addToCart(product, 1); 
         
         // message success đã được xử lý bên trong addToCart của Context rồi
-        // nhưng nếu muốn hiện thêm ở đây cũng được
     };
 
     // Logic lọc
