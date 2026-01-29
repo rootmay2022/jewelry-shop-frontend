@@ -3,9 +3,9 @@ import { Row, Col, Spin, Input, Pagination, Empty, Typography, Checkbox, Slider,
 import { FilterOutlined, SearchOutlined, ShoppingCartOutlined, ThunderboltOutlined } from '@ant-design/icons';
 import { useNavigate } from 'react-router-dom';
 import { getAllProducts, searchProducts } from '../../api/productApi';
-import { getAllCategories } from '../../api/categoryApi'; // Dùng hàm này từ trang admin của ní
-import { useCart } from '../../context/CartContext'; // Đảm bảo ní có CartContext
-import { useAuth } from '../../context/AuthContext'; // Để check login khi mua hàng
+import { getAllCategories } from '../../api/categoryApi';
+import { useCart } from '../../context/CartContext';
+import { useAuth } from '../../context/AuthContext';
 import ProductCard from '../../components/product/ProductCard';
 import formatCurrency from '../../utils/formatCurrency';
 
@@ -18,7 +18,7 @@ const ProductsPage = () => {
     const { isAuthenticated } = useAuth();
 
     const [allProducts, setAllProducts] = useState([]);
-    const [categories, setCategories] = useState([]); // Lưu danh mục từ admin
+    const [categories, setCategories] = useState([]); 
     const [filteredProducts, setFilteredProducts] = useState([]);
     const [loading, setLoading] = useState(true);
     const [currentPage, setCurrentPage] = useState(1);
@@ -66,23 +66,38 @@ const ProductsPage = () => {
         fetchCategories();
     }, [fetchProducts]);
 
-    // --- 3. XỬ LÝ MUA NGAY & THÊM GIỎ ---
-    const handleBuyNow = (product) => {
+    // --- 3. XỬ LÝ MUA NGAY & THÊM GIỎ (ĐÃ FIX LỖI) ---
+    
+    const handleBuyNow = async (product) => {
         if (!isAuthenticated) {
             message.warning('Vui lòng đăng nhập để mua hàng');
             return navigate('/login');
         }
-        // Chuyển sang trang checkout kèm thông tin sản phẩm
-        navigate('/checkout', { state: { buyNow: true, product, quantity: 1 } });
+        
+        try {
+            // FIX: Thêm vào giỏ hàng DB trước khi chuyển trang
+            // Truyền nguyên object 'product' để Context check kho
+            await addToCart(product, 1); 
+            
+            // Chuyển sang trang checkout (không cần state vì data đã nằm trong DB)
+            navigate('/checkout');
+        } catch (error) {
+            console.error("Lỗi khi mua ngay:", error);
+        }
     };
 
-    const handleAddToCart = (product) => {
+    const handleAddToCart = async (product) => {
         if (!isAuthenticated) return navigate('/login');
-        addToCart(product.id, 1);
-        message.success(`Đã thêm ${product.name} vào giỏ hàng`);
+        
+        // FIX: Truyền nguyên object 'product' thay vì 'product.id'
+        // Để CartContext lấy được stockQuantity
+        await addToCart(product, 1); 
+        
+        // message success đã được xử lý bên trong addToCart của Context rồi
+        // nhưng nếu muốn hiện thêm ở đây cũng được
     };
 
-    // Logic lọc (Giữ nguyên của ní nhưng khớp với data admin)
+    // Logic lọc
     useEffect(() => {
         let result = [...allProducts];
         if (filters.categories.length > 0) {
@@ -180,7 +195,6 @@ const ProductsPage = () => {
                                             }}>
                                                 <ProductCard product={product} />
                                                 
-                                                {/* CỤM NÚT NÍ CẦN ĐÂY */}
                                                 <div style={{ padding: '0 12px', marginTop: 'auto' }}>
                                                     <Button 
                                                         block type="primary" 
