@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react'; // Nhớ import useEffect
+import React from 'react';
 import { useCart } from '../../context/CartContext';
 import { Row, Col, Typography, Button, Spin, Breadcrumb, Divider, Alert } from 'antd';
 import { Link } from 'react-router-dom';
@@ -9,21 +9,14 @@ import CartSummary from '../../components/cart/CartSummary';
 const { Title, Text } = Typography;
 
 const CartPage = () => {
-    // 1. Lấy thêm hàm fetchCart từ Context (kiểm tra tên hàm bên file Context của bạn là gì nhé)
-    const { cart, loading, fetchCart } = useCart(); 
+    const { cart, loading } = useCart();
 
     const theme = { navy: '#001529', gold: '#C5A059', bg: '#fbfbfb' };
 
-    // 2. THÊM ĐOẠN NÀY: Gọi API lấy giỏ hàng ngay khi trang vừa load
-    useEffect(() => {
-        if (fetchCart) {
-            fetchCart();
-        }
-    }, []); // Mảng rỗng [] nghĩa là chỉ chạy 1 lần khi vào trang
-
-    // --- FIX: Lọc bỏ item rỗng ---
+    // --- FIX 1: Lọc bỏ item rỗng trước khi tính toán lỗi ---
+    // Sử dụng ?. và filter(Boolean) để loại bỏ null/undefined
     const invalidItems = cart?.items
-        ?.filter(item => item && item.quantity)
+        ?.filter(item => item && item.quantity) // Chỉ lấy item có thật và có số lượng
         .filter(item => {
             const stock = item.stockQuantity;
             if (typeof stock === 'number') {
@@ -42,6 +35,7 @@ const CartPage = () => {
         );
     }
 
+    // Kiểm tra cart rỗng an toàn hơn
     if (!cart || !cart.items || cart.items.length === 0) {
         return (
             <div style={{ textAlign: 'center', padding: '120px 20px', background: theme.bg, minHeight: '80vh' }}>
@@ -65,6 +59,7 @@ const CartPage = () => {
             
             <Divider />
 
+            {/* Thông báo lỗi nếu vượt quá stockQuantity */}
             {hasError && (
                 <Alert
                     message="Lỗi số lượng sản phẩm"
@@ -86,9 +81,9 @@ const CartPage = () => {
 
             <Row gutter={[40, 40]}>
                 <Col xs={24} lg={16}>
-                    {/* Render danh sách sản phẩm */}
+                    {/* --- FIX 2: Lọc bỏ item rỗng trước khi render ra màn hình --- */}
                     {cart.items
-                        .filter(item => item !== null && item !== undefined)
+                        .filter(item => item !== null && item !== undefined) // QUAN TRỌNG: Lọc sạch rác
                         .map(item => (
                             <CartItem key={item.id} item={item} />
                         ))
