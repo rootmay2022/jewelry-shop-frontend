@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
-import { Row, Col, Spin, Input, Pagination, Empty, Typography, Checkbox, Slider, Space, Divider, Button, Drawer, Tag, message } from 'antd';
-import { FilterOutlined, SearchOutlined, ShoppingCartOutlined, ThunderboltOutlined } from '@ant-design/icons';
+import { Row, Col, Spin, Input, Pagination, Typography, Checkbox, Slider, Space, Divider, Button, Drawer, message, Tag } from 'antd';
+import { SearchOutlined, ShoppingCartOutlined, ThunderboltOutlined } from '@ant-design/icons';
 import { useNavigate } from 'react-router-dom';
 import { getAllProducts, searchProducts } from '../../api/productApi';
 import { getAllCategories } from '../../api/categoryApi';
@@ -14,7 +14,7 @@ const PRODUCTS_PER_PAGE = 12;
 
 const ProductsPage = () => {
     const navigate = useNavigate();
-    const { addToCart } = useCart();
+    const { addToCart } = useCart(); // Hàm này trong context chịu trách nhiệm gọi API
     const { isAuthenticated } = useAuth();
 
     const [allProducts, setAllProducts] = useState([]);
@@ -24,6 +24,9 @@ const ProductsPage = () => {
     const [currentPage, setCurrentPage] = useState(1);
     const [isDrawerVisible, setIsDrawerVisible] = useState(false);
     
+    // State để tạo hiệu ứng loading riêng cho từng nút khi bấm (tránh spam click)
+    const [addingToCartId, setAddingToCartId] = useState(null);
+
     const [filters, setFilters] = useState({ 
         categories: [], 
         priceRange: [0, 2000000000],
@@ -66,37 +69,49 @@ const ProductsPage = () => {
         fetchCategories();
     }, [fetchProducts]);
 
-    // --- 3. XỬ LÝ MUA NGAY & THÊM GIỎ ---
+    // --- 3. XỬ LÝ MUA NGAY (Mua 1 cái -> Vào giỏ xem) ---
     const handleBuyNow = async (product) => {
         if (!isAuthenticated) {
             message.warning('Vui lòng đăng nhập để mua hàng');
             return navigate('/login');
         }
         
-        // FIX: Kiểm tra tồn kho trước khi gọi API
         if (product.stockQuantity <= 0) {
             message.error('Sản phẩm này đã hết hàng!');
             return;
         }
 
         try {
+            // Số lượng cố định là 1
             await addToCart(product, 1); 
             navigate('/cart'); 
         } catch (error) {
-            // Lỗi đã được CartContext xử lý hiển thị
+            // Lỗi sẽ được hiển thị bởi CartContext hoặc GlobalHandler
         }
     };
 
+    // --- 4. XỬ LÝ THÊM VÀO GIỎ (Chỉ thêm 1 cái) ---
     const handleAddToCart = async (product) => {
         if (!isAuthenticated) return navigate('/login');
 
-        // FIX: Kiểm tra tồn kho trước
         if (product.stockQuantity <= 0) {
             message.error('Sản phẩm này đã hết hàng!');
             return;
         }
+
+        // Bật loading cho nút của sản phẩm này
+        setAddingToCartId(product.id);
         
-        await addToCart(product, 1); 
+        try {
+            // Số lượng cố định là 1
+            await addToCart(product, 1);
+            // message.success đã có trong context, không cần gọi lại ở đây để tránh trùng
+        } catch (error) {
+            console.error("Lỗi thêm giỏ hàng:", error);
+        } finally {
+            // Tắt loading
+            setAddingToCartId(null);
+        }
     };
 
     // Logic lọc
@@ -126,7 +141,6 @@ const ProductsPage = () => {
                 <Title level={5} style={{ fontFamily: 'serif', margin: 0 }}>BỘ LỌC</Title>
                 <Button type="link" onClick={resetFilters} style={{ color: theme.gold, padding: 0 }}>Xóa tất cả</Button>
             </div>
-            {/* ... (Giữ nguyên phần bộ lọc của bạn) ... */}
             <div>
                 <Text strong style={{ display: 'block', marginBottom: '12px', fontSize: '12px', color: '#888' }}>DANH MỤC</Text>
                 <Checkbox.Group 
@@ -185,8 +199,10 @@ const ProductsPage = () => {
                             <>
                                 <Row gutter={[24, 40]}>
                                     {paginatedProducts.map(product => {
-                                        // KIỂM TRA TỒN KHO TẠI ĐÂY
+                                        // Kiểm tra hết hàng
                                         const isOutOfStock = product.stockQuantity <= 0;
+                                        // Kiểm tra đang thêm vào giỏ (để hiện loading)
+                                        const isAdding = addingToCartId === product.id;
 
                                         return (
                                             <Col xs={12} sm={12} md={12} lg={8} xl={6} key={product.id}>
@@ -196,10 +212,9 @@ const ProductsPage = () => {
                                                     display: 'flex', 
                                                     flexDirection: 'column',
                                                     paddingBottom: '15px',
-                                                    position: 'relative' // Để đặt nhãn hết hàng
+                                                    position: 'relative'
                                                 }}>
                                                     
-                                                    {/* HIỆN NHÃN HẾT HÀNG NẾU CẦN */}
                                                     {isOutOfStock && (
                                                         <div style={{
                                                             position: 'absolute', top: 10, right: 10, zIndex: 2,
@@ -216,8 +231,7 @@ const ProductsPage = () => {
                                                             block type="primary" 
                                                             icon={!isOutOfStock && <ThunderboltOutlined />} 
                                                             onClick={() => handleBuyNow(product)}
-                                                            // FIX: Khóa nút nếu hết hàng
-                                                            disabled={isOutOfStock}
+                                                            disabled={isOutOfStock || isAdding}
                                                             style={{ 
                                                                 background: isOutOfStock ? '#d9d9d9' : theme.navy, 
                                                                 borderColor: isOutOfStock ? '#d9d9d9' : theme.navy, 
@@ -232,13 +246,14 @@ const ProductsPage = () => {
                                                         </Button>
 
                                                         <Button 
-                                                            block icon={!isOutOfStock && <ShoppingCartOutlined />} 
+                                                            block 
+                                                            icon={!isOutOfStock && <ShoppingCartOutlined />} 
                                                             onClick={() => handleAddToCart(product)}
-                                                            // FIX: Khóa nút nếu hết hàng
-                                                            disabled={isOutOfStock}
+                                                            disabled={isOutOfStock || isAdding}
+                                                            loading={isAdding} // Hiện icon xoay xoay khi đang thêm
                                                             style={{ borderRadius: 0, height: '40px' }}
                                                         >
-                                                            {isOutOfStock ? 'Tạm hết' : 'Thêm vào giỏ'}
+                                                            {isOutOfStock ? 'Tạm hết' : (isAdding ? 'Đang thêm...' : 'Thêm vào giỏ')}
                                                         </Button>
                                                     </div>
                                                 </div>
