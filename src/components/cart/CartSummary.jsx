@@ -5,6 +5,7 @@ import formatCurrency from '../../utils/formatCurrency';
 
 const { Title, Text } = Typography;
 
+// Nhận prop disableCheckout từ CartPage
 const CartSummary = ({ totalAmount, disableCheckout }) => {
     const navigate = useNavigate();
 
@@ -17,24 +18,30 @@ const CartSummary = ({ totalAmount, disableCheckout }) => {
                 <Text strong style={{ color: '#C5A059', fontSize: '18px' }}>{formatCurrency(totalAmount)}</Text>
             </div>
             <Divider />
+            
+            {/* NÚT THANH TOÁN */}
             <Button 
                 type="primary" 
                 size="large" 
                 block 
-                disabled={disableCheckout}
+                // --- QUAN TRỌNG: Khóa nút nếu disableCheckout = true ---
+                disabled={disableCheckout} 
+                // -------------------------------------------------------
                 onClick={() => navigate('/checkout')}
                 style={{ 
                     height: '50px', 
-                    backgroundColor: disableCheckout ? '#d9d9d9' : '#001529',
+                    backgroundColor: disableCheckout ? '#d9d9d9' : '#001529', // Đổi màu xám nếu bị khóa
                     borderColor: disableCheckout ? '#d9d9d9' : '#001529',
-                    borderRadius: 0
+                    borderRadius: 0,
+                    fontWeight: 'bold'
                 }}
             >
-                {disableCheckout ? 'GIỎ HÀNG QUÁ TỒN KHO' : 'TIẾN HÀNH THANH TOÁN'}
+                {disableCheckout ? 'VUI LÒNG CẬP NHẬT GIỎ' : 'TIẾN HÀNH THANH TOÁN'}
             </Button>
+
             {disableCheckout && (
-                <Text type="danger" style={{ fontSize: '12px', display: 'block', textAlign: 'center', marginTop: 10 }}>
-                    Vui lòng điều chỉnh số lượng để tiếp tục
+                <Text type="danger" style={{ display: 'block', marginTop: 10, textAlign: 'center', fontSize: '12px' }}>
+                    Số lượng sản phẩm vượt quá tồn kho.
                 </Text>
             )}
         </Card>
