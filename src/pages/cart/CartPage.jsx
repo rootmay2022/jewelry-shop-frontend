@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect } from 'react'; // 1. Nhớ import useEffect
 import { useCart } from '../../context/CartContext';
 import { Row, Col, Typography, Button, Spin, Breadcrumb, Divider, Alert } from 'antd';
 import { Link } from 'react-router-dom';
@@ -9,14 +9,22 @@ import CartSummary from '../../components/cart/CartSummary';
 const { Title, Text } = Typography;
 
 const CartPage = () => {
-    const { cart, loading } = useCart();
+    // 2. Lấy thêm hàm fetchCart từ Context để gọi API lấy dữ liệu mới nhất
+    const { cart, loading, fetchCart } = useCart();
 
     const theme = { navy: '#001529', gold: '#C5A059', bg: '#fbfbfb' };
 
-    // --- FIX 1: Lọc bỏ item rỗng trước khi tính toán lỗi ---
-    // Sử dụng ?. và filter(Boolean) để loại bỏ null/undefined
+    // --- FIX QUAN TRỌNG: Tự động tải lại giỏ hàng khi vào trang ---
+    useEffect(() => {
+        // Gọi hàm lấy giỏ hàng từ server ngay khi component được "mount" (hiển thị)
+        if (fetchCart) {
+            fetchCart();
+        }
+    }, [fetchCart]); // Chạy lại nếu hàm fetchCart thay đổi (thường là chỉ chạy 1 lần)
+
+    // --- Lọc bỏ item rỗng ---
     const invalidItems = cart?.items
-        ?.filter(item => item && item.quantity) // Chỉ lấy item có thật và có số lượng
+        ?.filter(item => item && item.quantity)
         .filter(item => {
             const stock = item.stockQuantity;
             if (typeof stock === 'number') {
@@ -27,6 +35,7 @@ const CartPage = () => {
     
     const hasError = invalidItems.length > 0;
 
+    // Loading State
     if (loading && !cart) {
         return (
             <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '80vh' }}>
@@ -35,7 +44,7 @@ const CartPage = () => {
         );
     }
 
-    // Kiểm tra cart rỗng an toàn hơn
+    // Empty Cart State
     if (!cart || !cart.items || cart.items.length === 0) {
         return (
             <div style={{ textAlign: 'center', padding: '120px 20px', background: theme.bg, minHeight: '80vh' }}>
@@ -59,7 +68,7 @@ const CartPage = () => {
             
             <Divider />
 
-            {/* Thông báo lỗi nếu vượt quá stockQuantity */}
+            {/* Thông báo lỗi tồn kho */}
             {hasError && (
                 <Alert
                     message="Lỗi số lượng sản phẩm"
@@ -81,9 +90,9 @@ const CartPage = () => {
 
             <Row gutter={[40, 40]}>
                 <Col xs={24} lg={16}>
-                    {/* --- FIX 2: Lọc bỏ item rỗng trước khi render ra màn hình --- */}
+                    {/* Render danh sách sản phẩm (đã lọc rác) */}
                     {cart.items
-                        .filter(item => item !== null && item !== undefined) // QUAN TRỌNG: Lọc sạch rác
+                        .filter(item => item !== null && item !== undefined)
                         .map(item => (
                             <CartItem key={item.id} item={item} />
                         ))
