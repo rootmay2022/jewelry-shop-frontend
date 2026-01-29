@@ -1,5 +1,5 @@
 // src/api/cartApi.js
-import apiClient from './axiosConfig';
+import apiClient from './axiosConfig'; // Import đúng client đã cấu hình
 
 export const getCart = async () => {
   const response = await apiClient.get('/cart');
@@ -11,13 +11,14 @@ export const addItemToCart = async (item) => {
   return response.data;
 };
 
-// src/api/cartApi.js (hoặc nơi ní định nghĩa updateCartItem)
-
+// --- HÀM CẦN SỬA ---
 export const updateCartItem = async (itemId, quantity) => {
-    // Đảm bảo không gửi chuỗi "null" lên Server
-    const response = await axios.put(`/api/cart/items/${itemId}?quantity=${quantity}`);
+    // 1. Dùng apiClient (để tự động kèm Token)
+    // 2. Gửi object { quantity: ... } xuống Body
+    const response = await apiClient.put(`/cart/items/${itemId}`, { quantity });
     return response.data;
 };
+// -------------------
 
 export const removeItemFromCart = async (itemId) => {
   const response = await apiClient.delete(`/cart/items/${itemId}`);
