@@ -1,6 +1,7 @@
-import React, { useEffect } from 'react'; // 1. QUAN TRỌNG: Import useEffect
+import React, { useEffect } from 'react';
 import { useCart } from '../../context/CartContext';
-import { Row, Col, Typography, Button, Spin, Breadcrumb, Divider, Alert } from 'antd';
+import { useAuth } from '../../context/AuthContext'; // 1. QUAN TRỌNG: Import useAuth
+import { Row, Col, Typography, Button, Spin, Breadcrumb, Divider, Alert, message } from 'antd';
 import { Link } from 'react-router-dom';
 import { ShoppingCartOutlined, ArrowLeftOutlined, WarningOutlined } from '@ant-design/icons';
 import CartItem from '../../components/cart/CartItem';
@@ -9,26 +10,25 @@ import CartSummary from '../../components/cart/CartSummary';
 const { Title, Text } = Typography;
 
 const CartPage = () => {
-    // 2. Lấy hàm fetchCart từ Context
     const { cart, loading, fetchCart } = useCart();
+    const { user } = useAuth(); // 2. Lấy thông tin user
 
     const theme = { navy: '#001529', gold: '#C5A059', bg: '#fbfbfb' };
 
     // =========================================================
-    // 3. FIX LỖI "MẤT ĐƠN HÀNG": Tự động tải lại giỏ hàng khi vào trang
+    // 3. FIX LỖI "MẤT ĐƠN HÀNG": Tự động tải lại giỏ hàng khi user đã sẵn sàng
     // =========================================================
     useEffect(() => {
-        // Hàm này sẽ gọi API xuống Database lấy giỏ hàng mới nhất lên
-        if (fetchCart) {
+        if (user && fetchCart) {
             fetchCart();
         }
-    }, [fetchCart]); 
+    }, [user]); // Chạy lại khi user thay đổi (VD: F5 trang, hoặc mới login xong)
     // =========================================================
 
-    // Lọc bỏ sản phẩm lỗi (null/undefined) để tránh sập web
+    // Lọc bỏ sản phẩm lỗi
     const validItems = cart?.items?.filter(item => item && item.quantity) || [];
 
-    // Tìm các sản phẩm lỗi tồn kho (để hiện cảnh báo)
+    // Tìm các sản phẩm lỗi tồn kho
     const invalidItems = validItems.filter(item => {
         const stock = item.stockQuantity;
         if (typeof stock === 'number') {
@@ -39,7 +39,7 @@ const CartPage = () => {
     
     const hasError = invalidItems.length > 0;
 
-    // Loading khi chưa có dữ liệu
+    // Loading chỉ hiện khi chưa có cart VÀ đang loading
     if (loading && !cart) {
         return (
             <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '80vh' }}>
@@ -101,7 +101,6 @@ const CartPage = () => {
 
             <Row gutter={[40, 40]}>
                 <Col xs={24} lg={16}>
-                    {/* Render danh sách sản phẩm */}
                     {validItems.map(item => (
                         <CartItem key={item.id} item={item} />
                     ))}

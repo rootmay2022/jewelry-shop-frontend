@@ -129,7 +129,7 @@ const AppHeader = () => {
                     ) : (
                         screens.md && (
                             <Space size="large">
-                                <Link to="/login" className="nav-auth-link">LOGIN</Link>
+                                <Link to="/login" className="nav-auth-link">ĐĂNG NHẬP</Link>
                                 <Link to="/register" style={{ 
                                     color: '#000', 
                                     background: gold, 
@@ -137,7 +137,7 @@ const AppHeader = () => {
                                     fontSize: '12px',
                                     fontWeight: 'bold'
                                 }}>
-                                    JOIN
+                                    ĐĂNG KÝ
                                 </Link>
                             </Space>
                         )

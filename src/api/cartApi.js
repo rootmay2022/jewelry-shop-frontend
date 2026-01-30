@@ -1,5 +1,4 @@
-// src/api/cartApi.js
-import apiClient from './axiosConfig'; // (Hoặc axiosClient tùy tên file bạn đặt)
+import apiClient from './axiosConfig'; 
 
 export const getCart = async () => {
   const response = await apiClient.get('/cart');
@@ -11,14 +10,10 @@ export const addItemToCart = async (item) => {
   return response.data;
 };
 
-// --- ĐOẠN SỬA LỖI CẬP NHẬT SỐ LƯỢNG ---
-export const updateCartItem = async (itemId, quantity) => {
-    // 1. Phải dùng 'apiClient' thay vì 'axios' để có Token đăng nhập
-    // 2. Backend báo lỗi thiếu param, nên ta truyền ?quantity=... vào URL
-    const response = await apiClient.put(`/cart/items/${itemId}?quantity=${quantity}`);
-    return response.data;
+// Đã giữ nguyên fix lỗi quantity trên URL
+export const updateCartItem = (itemId, quantity) => {
+    return apiClient.put(`/cart/items/${itemId}?quantity=${quantity}`);
 };
-// --------------------------------------
 
 export const removeItemFromCart = async (itemId) => {
   const response = await apiClient.delete(`/cart/items/${itemId}`);
@@ -28,4 +23,4 @@ export const removeItemFromCart = async (itemId) => {
 export const clearCart = async () => {
     const response = await apiClient.delete('/cart');
     return response.data;
-}
+};

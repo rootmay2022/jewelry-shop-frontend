@@ -43,32 +43,39 @@ const ProfilePage = () => {
         }
     }, [isEditModalOpen, user, profileForm]);
 
-    // --- XỬ LÝ 1: CẬP NHẬT HỒ SƠ ---
-    // Tìm đến hàm handleUpdateProfile trong ProfilePage.jsx và sửa lại:
+   // --- XỬ LÝ 1: CẬP NHẬT HỒ SƠ ---
 const handleUpdateProfile = async (values) => {
     setLoading(true);
     try {
-        const { email, ...updateData } = values; 
+        // CHỈ GỬI các trường mà Backend UserUpdateRequest đang chờ (fullName, phone, address)
+        // Việc gửi thừa 'email' hoặc các trường khác có thể gây lỗi "Validation failed"
+        const updateData = {
+            fullName: values.fullName,
+            phone: values.phone,
+            address: values.address
+        };
+        
         const response = await updateProfile(user.id, updateData);
         
-        // Kiểm tra logic trả về của Backend
-        if (response) {
+        // Kiểm tra success từ ApiResponse của Backend
+        if (response.success || response.data) {
             message.success('Cập nhật hồ sơ thành công!');
             setIsEditModalOpen(false);
 
-            // Cập nhật lại User trong Context mà không cần load lại trang
-            const newUser = { ...user, ...updateData };
-            localStorage.setItem('user', JSON.stringify(newUser));
+            // Cập nhật lại dữ liệu đang hiển thị trong trình duyệt
+            const updatedUser = { ...user, ...updateData };
+            localStorage.setItem('user', JSON.stringify(updatedUser));
             
-            // Nếu AuthContext của bạn có hàm setUser, hãy gọi nó ở đây
-            // setUser(newUser); 
-            
-            // Nếu bắt buộc phải reload, hãy dùng:
-            setTimeout(() => window.location.reload(), 500); 
+            // Reload nhẹ để AuthContext và Header cập nhật lại tên mới
+            setTimeout(() => {
+                window.location.reload();
+            }, 500);
         }
     } catch (error) {
         console.error(error);
-        message.error('Lỗi cập nhật: ' + (error.response?.data?.message || "Sai đường dẫn hoặc lỗi server"));
+        // Hiện lỗi chi tiết từ Backend (Ví dụ: "Số điện thoại không được để trống")
+        const errorMsg = error.response?.data?.message || "Dữ liệu không hợp lệ hoặc lỗi server";
+        message.error('Lỗi cập nhật: ' + errorMsg);
     } finally {
         setLoading(false);
     }
