@@ -1,5 +1,5 @@
-// src/context/CartContext.jsx
 import React, { createContext, useState, useEffect, useContext, useCallback } from 'react';
+// Import các API
 import { getCart, addItemToCart, updateCartItem as updateCartItemApi, removeItemFromCart, clearCart as clearCartApi } from '../api/cartApi';
 import { useAuth } from './AuthContext';
 import { message } from 'antd';
@@ -11,12 +11,19 @@ export const CartProvider = ({ children }) => {
   const [loading, setLoading] = useState(false);
   const { isAuthenticated } = useAuth();
 
-  // 1. Lấy giỏ hàng
+  // =================================================================
+  // 1. HÀM LẤY GIỎ HÀNG (ĐÃ FIX LỖI F5 MẤT DỮ LIỆU)
+  // =================================================================
   const fetchCart = useCallback(async () => {
-    if (!isAuthenticated) {
+    // FIX: Kiểm tra thẳng Token trong ổ cứng (localStorage)
+    // Dù F5 thì token này vẫn còn, nên nó sẽ cho phép gọi API ngay lập tức
+    const token = localStorage.getItem('token'); 
+
+    if (!isAuthenticated && !token) {
       setCart(null);
       return;
     }
+
     setLoading(true);
     try {
       const response = await getCart();
@@ -25,11 +32,16 @@ export const CartProvider = ({ children }) => {
       }
     } catch (error) {
       console.error('Failed to fetch cart:', error);
+      // Nếu lỗi 401 (Hết hạn token) thì có thể set cart null
+      if (error.response && error.response.status === 401) {
+          setCart(null);
+      }
     } finally {
       setLoading(false);
     }
   }, [isAuthenticated]);
 
+  // Tự động lấy giỏ hàng khi login thành công hoặc khi F5 lại trang
   useEffect(() => {
     fetchCart();
   }, [fetchCart]);
@@ -37,7 +49,6 @@ export const CartProvider = ({ children }) => {
   // 2. Thêm vào giỏ
   const addToCart = async (product, quantity) => {
     const stock = product.stockQuantity;
-    // Tìm sản phẩm trong giỏ để cộng dồn số lượng hiện có
     const existingItem = cart?.items?.find(item => (item.productId === product.id || item.product?.id === product.id));
     const currentQtyInCart = existingItem ? existingItem.quantity : 0;
 
@@ -50,53 +61,38 @@ export const CartProvider = ({ children }) => {
     try {
       const response = await addItemToCart({ productId: product.id, quantity });
       if (response.success) {
-        setCart(response.data);
+        setCart(response.data); // Cập nhật lại state ngay
         message.success('Thêm vào giỏ hàng thành công!');
-      } else {
-        message.error(response.message || 'Có lỗi xảy ra.');
       }
     } catch (error) {
-      // FIX: Hiển thị lỗi chi tiết từ Backend trả về
       message.error(error.response?.data?.message || 'Không thể thêm vào giỏ hàng.');
     } finally {
       setLoading(false);
     }
   };
 
-  // 3. Cập nhật số lượng (QUAN TRỌNG: Đã đổi tên hàm thành updateCartItem)
+  // 3. Cập nhật số lượng
   const updateCartItem = async (itemId, quantity) => {
-    // Chặn dữ liệu rác
     if (quantity === null || quantity === undefined || isNaN(quantity)) return;
 
     const item = cart?.items?.find(i => i.id === itemId);
     const stock = item?.stockQuantity; 
 
-    // Kiểm tra tồn kho phía Client
     if (stock !== undefined && quantity > stock) {
       message.warning(`Trong kho chỉ còn ${stock} sản phẩm.`);
-      // Load lại giỏ hàng để số lượng hiển thị đúng với thực tế
-      await fetchCart(); 
+      await fetchCart(); // Reset lại số cũ
       return;
     }
 
     setLoading(true); 
     try {
-      // Gọi API cập nhật
       const response = await updateCartItemApi(itemId, parseInt(quantity, 10));
-      
       if (response.success) {
         setCart(response.data);
-      } else {
-        message.error(response.message || 'Cập nhật thất bại');
       }
     } catch (error) {
-      console.error('Failed to update cart item:', error);
-      // FIX: Hiển thị đúng thông báo lỗi từ Backend (ví dụ: "Hết hàng", "Quá số lượng")
-      const errorMsg = error.response?.data?.message || 'Cập nhật số lượng thất bại.';
-      message.error(errorMsg);
-      
-      // Nếu lỗi, load lại giỏ hàng cũ để UI không bị sai số
-      await fetchCart();
+      message.error(error.response?.data?.message || 'Cập nhật thất bại.');
+      await fetchCart(); // Lỗi thì load lại để đồng bộ
     } finally {
       setLoading(false);
     }
@@ -108,11 +104,12 @@ export const CartProvider = ({ children }) => {
     try {
       const response = await removeItemFromCart(itemId);
       if (response.success) {
+        // CÁCH 1: Gọi lại fetchCart để lấy dữ liệu mới nhất từ server (An toàn nhất)
         await fetchCart(); 
         message.success('Đã xóa sản phẩm.');
       }
     } catch (error) {
-      message.error(error.response?.data?.message || 'Xóa sản phẩm thất bại.');
+      message.error('Xóa sản phẩm thất bại.');
     } finally {
       setLoading(false);
     }
@@ -142,7 +139,7 @@ export const CartProvider = ({ children }) => {
         loading, 
         fetchCart, 
         addToCart, 
-        updateCartItem, // Tên hàm khớp với CartItem.jsx
+        updateCartItem, 
         removeFromCart, 
         clearCart, 
         cartItemCount 

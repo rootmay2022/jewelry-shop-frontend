@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from 'react';
-import { Table, Tag, Select, message, Spin, Typography } from 'antd';
+import { Table, Tag, Select, message, Typography, Space, Card, Badge } from 'antd';
 import { getAllOrdersAdmin, updateOrderStatusAdmin } from '../../api/orderApi';
-import { getAllUsersAdmin } from '../../api/authApi'; // ĐÃ ĐỔI THÀNH authApi
+import { getAllUsersAdmin } from '../../api/authApi';
 import dayjs from 'dayjs';
 import formatCurrency from '../../utils/formatCurrency';
+import { CheckCircleOutlined, SyncOutlined, clockCircleOutlined, CloseCircleOutlined, CarOutlined } from '@ant-design/icons';
 
 const { Title, Text } = Typography;
 const { Option } = Select;
@@ -16,12 +17,11 @@ const OrderManagement = () => {
     const fetchData = async () => {
         setLoading(true);
         try {
-            // Chỉ gọi API khi ní chắc chắn hàm getAllUsersAdmin có trong authApi
             const [orderRes, userRes] = await Promise.all([
                 getAllOrdersAdmin(),
                 getAllUsersAdmin().catch(e => {
                     console.error("Lỗi lấy User:", e);
-                    return []; // Trả về mảng rỗng nếu lỗi để ko sập web
+                    return { data: [] };
                 })
             ]);
 
@@ -40,7 +40,9 @@ const OrderManagement = () => {
             }
 
             if (Array.isArray(orderData)) {
-                setOrders(orderData);
+                // Sắp xếp đơn hàng mới nhất lên đầu
+                const sortedOrders = orderData.sort((a, b) => b.id - a.id);
+                setOrders(sortedOrders);
             }
         } catch (error) {
             console.error("Lỗi Fetch:", error);
@@ -53,19 +55,35 @@ const OrderManagement = () => {
     useEffect(() => { fetchData(); }, []);
 
     const handleStatusChange = async (orderId, newStatus) => {
+        // Hiện hiệu ứng chờ vì quá trình trừ kho ở Backend có thể mất chút thời gian
+        const hide = message.loading('Đang cập nhật trạng thái và xử lý kho...', 0);
         try {
             const response = await updateOrderStatusAdmin(orderId, newStatus);
+            
+            // Nếu backend trả về ApiResponse { success: true, ... }
             if (response.success || response) {
-                message.success('Cập nhật thành công!');
-                fetchData();
+                message.success(response.message || 'Cập nhật trạng thái thành công!');
+                fetchData(); // Tải lại để cập nhật bảng
             }
         } catch (error) { 
-            message.error('Lỗi cập nhật trạng thái.'); 
+            console.error("Lỗi cập nhật:", error);
+            // LẤY TIN NHẮN LỖI CHI TIẾT (Ví dụ: "Sản phẩm Kim Cương không đủ số lượng")
+            const errorMsg = error.response?.data?.message || 'Lỗi cập nhật trạng thái.';
+            message.error(errorMsg); 
+            fetchData(); // Refresh để đảm bảo Select box không hiển thị sai trạng thái
+        } finally {
+            hide();
         }
     };
 
     const columns = [
-        { title: 'Mã Đơn', dataIndex: 'id', key: 'id', render: (id) => <b>#{id}</b> },
+        { 
+            title: 'Mã Đơn', 
+            dataIndex: 'id', 
+            key: 'id', 
+            width: 100,
+            render: (id) => <Text strong>#{id}</Text> 
+        },
         { 
             title: 'Khách Hàng', 
             key: 'customer', 
@@ -73,12 +91,10 @@ const OrderManagement = () => {
                 const userId = record.user_id || record.userId;
                 const userInfo = usersMap[userId];
                 return (
-                    <div>
-                        <div style={{ fontWeight: 'bold' }}>
-                            {userInfo ? <Text type="primary">{userInfo.name}</Text> : <Tag color="volcano">ID: {userId}</Tag>}
-                        </div>
-                        {userInfo?.phone && <div style={{ fontSize: '12px', color: '#888' }}>{userInfo.phone}</div>}
-                    </div>
+                    <Space direction="vertical" size={0}>
+                        <Text strong>{userInfo ? userInfo.name : `ID: ${userId}`}</Text>
+                        {userInfo?.phone && <Text type="secondary" style={{ fontSize: '12px' }}>{userInfo.phone}</Text>}
+                    </Space>
                 );
             }
         },
@@ -86,40 +102,53 @@ const OrderManagement = () => {
             title: 'Địa Chỉ Giao', 
             dataIndex: 'shipping_address',
             key: 'shipping_address',
-            render: (text, record) => <Text copyable>{text || record.shippingAddress || "N/A"}</Text>
+            render: (text, record) => <Text ellipsis={{ tooltip: text || record.shippingAddress }} style={{ maxWidth: 200 }}>{text || record.shippingAddress || "N/A"}</Text>
         },
         { 
             title: 'Ngày Đặt', 
             dataIndex: 'order_date',
+            width: 150,
             render: (date, record) => dayjs(date || record.orderDate).format('DD/MM/YYYY HH:mm') 
         },
         { 
             title: 'Tổng Tiền', 
             dataIndex: 'total_amount',
-            render: (val, record) => <b style={{ color: '#d4380d' }}>{formatCurrency(val || record.totalAmount)}</b> 
+            width: 150,
+            render: (val, record) => <Text strong style={{ color: '#cf1322' }}>{formatCurrency(val || record.totalAmount)}</Text> 
         },
         { 
             title: 'Trạng Thái', 
             dataIndex: 'status', 
+            width: 150,
             render: (status) => {
-                const colors = { PENDING: 'gold', CONFIRMED: 'blue', SHIPPING: 'cyan', DELIVERED: 'green', CANCELLED: 'red' };
-                return <Tag color={colors[status] || 'default'}>{status}</Tag>;
+                const config = {
+                    PENDING: { color: 'gold', text: 'Chờ duyệt', icon: <SyncOutlined spin /> },
+                    CONFIRMED: { color: 'blue', text: 'Đã xác nhận', icon: <CheckCircleOutlined /> },
+                    SHIPPING: { color: 'cyan', text: 'Đang giao', icon: <CarOutlined /> },
+                    DELIVERED: { color: 'green', text: 'Đã giao (Trừ kho)', icon: <CheckCircleOutlined /> },
+                    CANCELLED: { color: 'red', text: 'Đã hủy', icon: <CloseCircleOutlined /> },
+                };
+                const item = config[status] || { color: 'default', text: status };
+                return <Tag icon={item.icon} color={item.color}>{item.text.toUpperCase()}</Tag>;
             }
         },
         {
             title: 'Thao Tác',
             key: 'action',
+            fixed: 'right',
+            width: 180,
             render: (_, record) => (
                 <Select
                     value={record.status}
-                    style={{ width: 140 }}
+                    style={{ width: 160 }}
                     onChange={(val) => handleStatusChange(record.id, val)}
+                    // Khóa không cho sửa nếu đã giao hoặc đã hủy
                     disabled={['DELIVERED', 'CANCELLED'].includes(record.status)}
                 >
                     <Option value="PENDING">Chờ duyệt</Option>
                     <Option value="CONFIRMED">Xác nhận</Option>
                     <Option value="SHIPPING">Đang giao</Option>
-                    <Option value="DELIVERED">Đã giao</Option>
+                    <Option value="DELIVERED">Đã giao (Trừ kho)</Option>
                     <Option value="CANCELLED">Hủy đơn</Option>
                 </Select>
             ),
@@ -127,10 +156,27 @@ const OrderManagement = () => {
     ];
 
     return (
-        <div style={{ padding: '24px', background: '#fff', minHeight: '100vh' }}>
-            <Title level={2}>📦 Quản Lý Đơn Hàng</Title>
-            <Table columns={columns} dataSource={orders} rowKey="id" loading={loading} bordered pagination={{ pageSize: 8 }} />
-        </div>
+        <Card style={{ margin: '24px', borderRadius: '8px', boxShadow: '0 4px 12px rgba(0,0,0,0.05)' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
+                <Title level={3} style={{ margin: 0 }}>📦 Quản Lý Đơn Hàng & Điều Tiết Kho</Title>
+                <Badge count={orders.length} overflowCount={999} color="#108ee9" style={{ marginBottom: '10px' }}>
+                    <Text type="secondary">Tổng số đơn hàng</Text>
+                </Badge>
+            </div>
+            
+            <Table 
+                columns={columns} 
+                dataSource={orders} 
+                rowKey="id" 
+                loading={loading} 
+                bordered 
+                scroll={{ x: 1000 }}
+                pagination={{ 
+                    pageSize: 8,
+                    showTotal: (total) => `Tổng cộng ${total} đơn hàng`
+                }} 
+            />
+        </Card>
     );
 };
 
