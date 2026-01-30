@@ -44,32 +44,35 @@ const ProfilePage = () => {
     }, [isEditModalOpen, user, profileForm]);
 
     // --- XỬ LÝ 1: CẬP NHẬT HỒ SƠ ---
-    const handleUpdateProfile = async (values) => {
-        setLoading(true);
-        try {
-            // Gọi API cập nhật (loại bỏ email nếu backend không cho sửa email)
-            const { email, ...updateData } = values; 
-            
-            const response = await updateProfile(user.id, updateData);
-            
-            if (response.success || response.data) {
-                message.success('Cập nhật hồ sơ thành công!');
-                setIsEditModalOpen(false);
-                
-                // Cập nhật lại User trong Context (Nếu API trả về user mới)
-                // Cách đơn giản nhất nếu context không có hàm update riêng: 
-                // Gọi lại API lấy profile hoặc cập nhật tạm thời local storage
-                const newUser = { ...user, ...updateData };
-                localStorage.setItem('user', JSON.stringify(newUser)); // Ví dụ lưu local
-                window.location.reload(); // Reload nhẹ để cập nhật UI (hoặc dùng hàm setUser của Context)
-            }
-        } catch (error) {
-            message.error('Lỗi cập nhật: ' + (error.response?.data?.message || error.message));
-        } finally {
-            setLoading(false);
-        }
-    };
+    // Tìm đến hàm handleUpdateProfile trong ProfilePage.jsx và sửa lại:
+const handleUpdateProfile = async (values) => {
+    setLoading(true);
+    try {
+        const { email, ...updateData } = values; 
+        const response = await updateProfile(user.id, updateData);
+        
+        // Kiểm tra logic trả về của Backend
+        if (response) {
+            message.success('Cập nhật hồ sơ thành công!');
+            setIsEditModalOpen(false);
 
+            // Cập nhật lại User trong Context mà không cần load lại trang
+            const newUser = { ...user, ...updateData };
+            localStorage.setItem('user', JSON.stringify(newUser));
+            
+            // Nếu AuthContext của bạn có hàm setUser, hãy gọi nó ở đây
+            // setUser(newUser); 
+            
+            // Nếu bắt buộc phải reload, hãy dùng:
+            setTimeout(() => window.location.reload(), 500); 
+        }
+    } catch (error) {
+        console.error(error);
+        message.error('Lỗi cập nhật: ' + (error.response?.data?.message || "Sai đường dẫn hoặc lỗi server"));
+    } finally {
+        setLoading(false);
+    }
+};
     // --- XỬ LÝ 2: ĐỔI MẬT KHẨU ---
     const handleChangePassword = async (values) => {
         setLoading(true);
